@@ -16,8 +16,18 @@ public class HotFixAttribute : Attribute
 
 public class Main : MonoBehaviour
 {
+    [SerializeField] public string aaa;
+    [SerializeField]
+    public string bbb
+    {
+        get;
+        [HotFix]
+        private set;
+    }
     void Start()
     {
+        aaa = "456";
+        Debug.Log(aaa);
         Debug.Log(Add(1, 2));
     }
 
