@@ -1,5 +1,7 @@
 ﻿using Mono.Cecil;
 using Mono.Cecil.Cil;
+using Newtonsoft.Json;
+using System;
 using System.IO;
 using System.Linq;
 using UnityEngine;
@@ -13,53 +15,67 @@ namespace HotFix
             FileStream fs = new(dllPath, FileMode.Open);
             AssemblyDefinition assembiy = AssemblyDefinition.ReadAssembly(fs);
 
-            /// 遍历程序所有方法，进行代码注入
-            /// 对所有方法，嵌入一段代码，检查该方法是否为热更新代码，如果是热更新代码，执行热更新逻辑
-            /// 对标记了<see cref="HotfixAttribute"/>的方法，将其IL序列化
-            foreach (TypeDefinition typeDef in assembiy.MainModule.Types)
+            try
             {
-                foreach (MethodDefinition methedDef in typeDef.Methods)
+                /// 遍历程序所有方法，进行代码注入
+                /// 对所有方法，嵌入一段代码，检查该方法是否为热更新代码，如果是热更新代码，执行热更新逻辑
+                /// 对标记了<see cref="HotfixAttribute"/>的方法，将其IL序列化
+                foreach (TypeDefinition typeDef in assembiy.MainModule.Types)
                 {
-                    string hotFixAttribute = typeof(HotfixAttribute).FullName;
-                    if (methedDef.CustomAttributes.Any(attr => attr.AttributeType.FullName == hotFixAttribute))
+                    foreach (MethodDefinition methedDef in typeDef.Methods)
                     {
-                        // IL序列化
-                        GenerateIL(methedDef);
+                        string hotFixAttribute = typeof(HotfixAttribute).FullName;
+                        if (methedDef.CustomAttributes.Any(attr => attr.AttributeType.FullName == hotFixAttribute))
+                        {
+                            // IL序列化
+                            GenerateIL(methedDef);
+                        }
+                        // 代码注入
+                        InjectionHotfix(assembiy, methedDef);
                     }
-                    // 代码注入
-                    InjectionHotfix(assembiy, methedDef);
                 }
             }
-
-            // 保存并释放dll文件占用
-            assembiy.Write(fs);
-            fs.Dispose();
+            finally
+            {
+                // 保存并释放dll文件占用
+                //assembiy.Write(fs);
+                fs.Dispose();
+            }
         }
 
         private static void GenerateIL(MethodDefinition methodDefinition)
         {
-            Debug.Log("----Parameters");
-            foreach (ParameterDefinition item in methodDefinition.Parameters)
-            {
-                Debug.Log(item.ParameterType.FullName);
-            }
+            HotfixMethodInfo methodInfo = Convert(methodDefinition);
+            Debug.Log(JsonConvert.SerializeObject(methodInfo, Formatting.Indented));
+        }
 
-            MethodBody body = methodDefinition.Body;
+        private static HotfixMethodInfo Convert(MethodDefinition methodDefinition)
+        {
+            string name = methodDefinition.Name;
+            string[] parameters = methodDefinition.Parameters
+                .Select(p => p.ParameterType.FullName)
+                .ToArray();
+            string returnType = methodDefinition.ReturnType.FullName;
+            HotfixMethodBodyInfo bodyInfo = Convert(methodDefinition.Body);
+            return new HotfixMethodInfo(name, parameters, returnType, bodyInfo);
+        }
 
-            Debug.Log("----Variables");
-            foreach (VariableDefinition item in body.Variables)
-            {
-                Debug.Log(item.VariableType.FullName);
-            }
-
-            Debug.Log("----Instructions");
-            foreach (Instruction item in body.Instructions)
-            {
-                if (item.Operand != null)
-                    Debug.Log(item.OpCode + "--" + item.Operand.GetType() + "--" + item.Operand);
-                else
-                    Debug.Log(item.OpCode);
-            }
+        private static HotfixMethodBodyInfo Convert(MethodBody methodBody)
+        {
+            int maxStackSize = methodBody.MaxStackSize;
+            string[] variables = methodBody.Variables
+                .Select(v => v.VariableType.FullName)
+                .ToArray();
+            HotfixInstruction[] instructions = methodBody.Instructions
+                .Select(instruction =>
+                {
+                    int offset = instruction.Offset;
+                    HotfixOpCode code = (HotfixOpCode)(int)instruction.OpCode.Code;
+                    object operand = instruction.Operand;
+                    return new HotfixInstruction(offset, code, operand);
+                })
+                .ToArray();
+            return new HotfixMethodBodyInfo(maxStackSize, variables, instructions);
         }
 
         private static void InjectionHotfix(AssemblyDefinition assembiy, MethodDefinition methodDefinition)
