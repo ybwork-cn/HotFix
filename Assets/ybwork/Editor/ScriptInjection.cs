@@ -1,12 +1,11 @@
 ﻿using Mono.Cecil;
 using Mono.Cecil.Cil;
 using Newtonsoft.Json;
-using System;
 using System.IO;
 using System.Linq;
 using UnityEngine;
 
-namespace HotFix
+namespace Hotfix.Editor
 {
     public static class ScriptInjection
     {
@@ -46,7 +45,10 @@ namespace HotFix
         private static void GenerateIL(MethodDefinition methodDefinition)
         {
             HotfixMethodInfo methodInfo = Convert(methodDefinition);
-            Debug.Log(JsonConvert.SerializeObject(methodInfo, Formatting.Indented));
+            string content = JsonConvert.SerializeObject(methodInfo, Formatting.Indented);
+            Debug.Log(content);
+            Directory.CreateDirectory(Application.streamingAssetsPath);
+            File.WriteAllText(Application.streamingAssetsPath + "/aa.json", content);
         }
 
         private static HotfixMethodInfo Convert(MethodDefinition methodDefinition)
@@ -57,7 +59,13 @@ namespace HotFix
                 .ToArray();
             string returnType = methodDefinition.ReturnType.FullName;
             HotfixMethodBodyInfo bodyInfo = Convert(methodDefinition.Body);
-            return new HotfixMethodInfo(name, parameters, returnType, bodyInfo);
+            return new HotfixMethodInfo
+            {
+                Name = name,
+                Parameters = parameters,
+                ReturnType = returnType,
+                Body = bodyInfo,
+            };
         }
 
         private static HotfixMethodBodyInfo Convert(MethodBody methodBody)
@@ -66,13 +74,36 @@ namespace HotFix
             string[] variables = methodBody.Variables
                 .Select(v => v.VariableType.FullName)
                 .ToArray();
-            HotfixInstruction[] instructions = methodBody.Instructions
+            Instruction[] instructions = methodBody.Instructions
                 .Select(instruction =>
                 {
                     int offset = instruction.Offset;
                     HotfixOpCode code = (HotfixOpCode)(int)instruction.OpCode.Code;
                     object operand = instruction.Operand;
-                    return new HotfixInstruction(offset, code, operand);
+                    Instruction result = new Instruction();
+                    result.Offset = offset;
+                    result.Code = code;
+                    if (operand != null)
+                    {
+                        if (operand is TypeReference typeReference)
+                        {
+                            result.OperandType = OperandType.Type;
+                            result.Operand = typeReference.FullName;
+                        }
+                        else if (operand is MethodReference methodReference)
+                        {
+                            result.OperandType = OperandType.Method;
+                            result.Operand = methodReference.FullName;
+                        }
+                        else if (operand is Mono.Cecil.Cil.Instruction targetInstruction)
+                        {
+                            result.OperandType = OperandType.Instruction;
+                            result.Operand = targetInstruction.Offset;
+                        }
+                        else
+                            throw new System.Exception("错误的OperandType:" + operand.GetType());
+                    }
+                    return result;
                 })
                 .ToArray();
             return new HotfixMethodBodyInfo(maxStackSize, variables, instructions);

@@ -1,0 +1,56 @@
+{
+  "Name": "Add",
+  "Parameters": [
+    "System.Int32",
+    "System.Int32"
+  ],
+  "ReturnType": "System.Int32",
+  "Body": {
+    "MaxStackSize": 8,
+    "Variables": [],
+    "Instructions": [
+      {
+        "Offset": 0,
+        "Code": 3,
+        "OperandType": 0,
+        "Operand": null
+      },
+      {
+        "Offset": 1,
+        "Code": 4,
+        "OperandType": 0,
+        "Operand": null
+      },
+      {
+        "Offset": 2,
+        "Code": 87,
+        "OperandType": 0,
+        "Operand": null
+      },
+      {
+        "Offset": 3,
+        "Code": 36,
+        "OperandType": 0,
+        "Operand": null
+      },
+      {
+        "Offset": 4,
+        "Code": 137,
+        "OperandType": 1,
+        "Operand": "System.Int32"
+      },
+      {
+        "Offset": 9,
+        "Code": 39,
+        "OperandType": 0,
+        "Operand": "System.Void UnityEngine.Debug::Log(System.Object)"
+      },
+      {
+        "Offset": 14,
+        "Code": 41,
+        "OperandType": 0,
+        "Operand": null
+      }
+    ]
+  }
+}
