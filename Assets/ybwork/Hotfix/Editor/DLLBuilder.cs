@@ -14,13 +14,13 @@ namespace Hotfix.Editor
         [MenuItem("Tools/Build DLL", priority = 1)]
         public static void BuildDLL()
         {
-            CompilationPipeline.RequestScriptCompilation();
+            CompilationPipeline.RequestScriptCompilation(RequestScriptCompilationOptions.CleanBuildCache);
         }
 
         [MenuItem("Tools/Script Generate", priority = 2)]
         public static void ScriptGenerate()
         {
-            ScriptInjection.Generate("Library/ScriptAssemblies/Hotfix.dll");
+            ScriptInjection.Generate("Hotfix.dll");
         }
     }
 }

@@ -18,14 +18,13 @@ public class Main : MonoBehaviour
         Debug.Log(aaa);
         Debug.Log(Add(1, 2));
         string content = File.ReadAllText(Application.streamingAssetsPath + "/aa.json");
-        HotfixMethodInfo method = Runner.Create(content);
+        HotfixMethodInfo method = HotfixRunner.Create(content);
     }
 
     [Hotfix]
     public int Add(int a, int b)
     {
         int v = a + b;
-        Debug.Log(v);
         return v;
     }
 }

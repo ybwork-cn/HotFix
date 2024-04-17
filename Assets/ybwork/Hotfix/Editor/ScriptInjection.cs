@@ -1,6 +1,7 @@
 ﻿using Mono.Cecil;
 using Mono.Cecil.Cil;
 using Newtonsoft.Json;
+using System;
 using System.IO;
 using System.Linq;
 using UnityEngine;
@@ -9,37 +10,36 @@ namespace Hotfix.Editor
 {
     public static class ScriptInjection
     {
-        public static void Generate(string dllPath)
+        static string _dllPath = "Library/ScriptAssemblies";
+        public static void Generate(string dllName)
         {
-            FileStream fs = new(dllPath, FileMode.Open);
-            AssemblyDefinition assembiy = AssemblyDefinition.ReadAssembly(fs);
+            using FileStream fsSourse = new(Path.Combine(_dllPath, dllName), FileMode.Open);
+            using MemoryStream ms = new MemoryStream();
+            fsSourse.CopyTo(ms);
+            ms.Position = 0;
 
-            try
+            AssemblyDefinition assembiy = AssemblyDefinition.ReadAssembly(ms);
+
+            /// 遍历程序所有方法，进行代码注入
+            /// 对所有方法，嵌入一段代码，检查该方法是否为热更新代码，如果是热更新代码，执行热更新逻辑
+            /// 对标记了<see cref="HotfixAttribute"/>的方法，将其IL序列化
+            foreach (TypeDefinition typeDef in assembiy.MainModule.Types)
             {
-                /// 遍历程序所有方法，进行代码注入
-                /// 对所有方法，嵌入一段代码，检查该方法是否为热更新代码，如果是热更新代码，执行热更新逻辑
-                /// 对标记了<see cref="HotfixAttribute"/>的方法，将其IL序列化
-                foreach (TypeDefinition typeDef in assembiy.MainModule.Types)
+                foreach (MethodDefinition methedDef in typeDef.Methods)
                 {
-                    foreach (MethodDefinition methedDef in typeDef.Methods)
+                    string hotFixAttribute = typeof(HotfixAttribute).FullName;
+                    if (methedDef.CustomAttributes.Any(attr => attr.AttributeType.FullName == hotFixAttribute))
                     {
-                        string hotFixAttribute = typeof(HotfixAttribute).FullName;
-                        if (methedDef.CustomAttributes.Any(attr => attr.AttributeType.FullName == hotFixAttribute))
-                        {
-                            // IL序列化
-                            GenerateIL(methedDef);
-                        }
-                        // 代码注入
-                        InjectionHotfix(assembiy, methedDef);
+                        // IL序列化
+                        GenerateIL(methedDef);
                     }
+                    // 代码注入
+                    InjectionHotfix(assembiy, methedDef);
                 }
             }
-            finally
-            {
-                // 保存并释放dll文件占用
-                //assembiy.Write(fs);
-                fs.Dispose();
-            }
+            string newpath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop) + "/aa.dll";
+            using FileStream fsTarget = new FileStream(newpath, FileMode.OpenOrCreate);
+            assembiy.Write(fsSourse);
         }
 
         private static void GenerateIL(MethodDefinition methodDefinition)
@@ -74,13 +74,13 @@ namespace Hotfix.Editor
             string[] variables = methodBody.Variables
                 .Select(v => v.VariableType.FullName)
                 .ToArray();
-            Instruction[] instructions = methodBody.Instructions
+            HotfixInstruction[] instructions = methodBody.Instructions
                 .Select(instruction =>
                 {
                     int offset = instruction.Offset;
                     HotfixOpCode code = (HotfixOpCode)(int)instruction.OpCode.Code;
                     object operand = instruction.Operand;
-                    Instruction result = new Instruction();
+                    HotfixInstruction result = new HotfixInstruction();
                     result.Offset = offset;
                     result.Code = code;
                     if (operand != null)
@@ -95,10 +95,15 @@ namespace Hotfix.Editor
                             result.OperandType = OperandType.Method;
                             result.Operand = methodReference.FullName;
                         }
-                        else if (operand is Mono.Cecil.Cil.Instruction targetInstruction)
+                        else if (operand is Instruction targetInstruction)
                         {
                             result.OperandType = OperandType.Instruction;
                             result.Operand = targetInstruction.Offset;
+                        }
+                        else if (operand is string str)
+                        {
+                            result.OperandType = OperandType.String;
+                            result.Operand = str;
                         }
                         else
                             throw new System.Exception("错误的OperandType:" + operand.GetType());
@@ -109,19 +114,40 @@ namespace Hotfix.Editor
             return new HotfixMethodBodyInfo(maxStackSize, variables, instructions);
         }
 
-        private static void InjectionHotfix(AssemblyDefinition assembiy, MethodDefinition methodDefinition)
+        private static void InjectionHotfix(AssemblyDefinition assembly, MethodDefinition methodDefinition)
         {
             // 找到需要AOP的函数
-            //ILProcessor processor = methodDefinition.Body.GetILProcessor();
+            ILProcessor processor = methodDefinition.Body.GetILProcessor();
 
-            // 注入新的临时变量
-            //TypeReference boolReference = assembiy.MainModule.ImportReference(typeof(bool));
-            //processor.Body.Variables.Add(new VariableDefinition(boolReference));
-            // 记录临时变量的索引位置
-            //int flagIndex = processor.Body.Variables.Count - 1;
+            if (processor.Body.Instructions.Count == 0)
+                return;
 
-            //Instruction firstInstruction = processor.Body.Instructions[0];
-            //processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Nop));
+            Instruction firstInstruction = processor.Body.Instructions[0];
+            Instruction lastInstruction = processor.Body.Instructions[^1];
+
+            MethodReference runMethodReference;
+            if (methodDefinition.ReturnType.FullName == typeof(void).FullName)
+            {
+                System.Reflection.MethodInfo runMethod = typeof(HotfixRunner).GetMethod("RunVoid");
+                runMethodReference = assembly.MainModule.ImportReference(runMethod);
+            }
+            else
+            {
+                System.Reflection.MethodInfo runMethod = typeof(HotfixRunner).GetMethod("Run");
+                runMethodReference = assembly.MainModule.ImportReference(runMethod);
+                runMethodReference = MakeGenericMethod(runMethodReference, methodDefinition.ReturnType);
+            }
+
+            System.Reflection.MethodInfo judgeMethod = typeof(HotfixRunner).GetMethod("IsHotfixMethod");
+            MethodReference judgeMethodReference = assembly.MainModule.ImportReference(judgeMethod);
+
+            processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Call, judgeMethodReference));
+            processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Brfalse_S, firstInstruction));
+
+            processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Call, runMethodReference));
+            processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Ret));
+
+
             //processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Ldsfld, fieldDefinition));
             //processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Ldnull));
             //processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Cgt_Un));
@@ -132,7 +158,7 @@ namespace Hotfix.Editor
             //    processor.Body.Instructions[6]));
             //processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Ldsfld, fieldDefinition));
             //processor.InsertBefore(firstInstruction, processor.Create(
-            //    OpCodes.Ldstr, 
+            //    OpCodes.Ldstr,
             //    methodDefinition.DeclaringType.FullName + ":" + methodDefinition.Name));
             //for (int i = 1; i <= methodDefinition.Parameters.Count; i++)
             //{
@@ -142,6 +168,19 @@ namespace Hotfix.Editor
             //    OpCodes.Callvirt,
             //    assembiy.MainModule.ImportReference(funcType.GetMethod("Invoke"))));
             //processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Ret));
+        }
+
+        private static MethodReference MakeGenericMethod(MethodReference runMethodReference, params TypeReference[] types)
+        {
+            // 创建泛型方法引用
+            GenericInstanceMethod genericMethod = new GenericInstanceMethod(runMethodReference);
+            // 添加泛型参数
+            foreach (var type in types)
+            {
+                genericMethod.GenericArguments.Add(type);
+            }
+            runMethodReference = genericMethod;
+            return runMethodReference;
         }
     }
 }

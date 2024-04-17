@@ -4,9 +4,9 @@
     {
         public int MaxStackSize;
         public string[] Variables;
-        public Instruction[] Instructions;
+        public HotfixInstruction[] Instructions;
 
-        public HotfixMethodBodyInfo(int maxStackSize, string[] variables, Instruction[] instructions)
+        public HotfixMethodBodyInfo(int maxStackSize, string[] variables, HotfixInstruction[] instructions)
         {
             MaxStackSize = maxStackSize;
             Variables = variables;

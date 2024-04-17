@@ -2,12 +2,13 @@
 {
     public enum OperandType
     {
+        String,
         Method,
         Type,
         Instruction,
     }
 
-    public class Instruction
+    public class HotfixInstruction
     {
         public int Offset;
         public HotfixOpCode Code;
