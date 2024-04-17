@@ -16,9 +16,11 @@ public class Main : MonoBehaviour
     {
         aaa = "456";
         Debug.Log(aaa);
-        Debug.Log(Add(1, 2));
+        //Debug.Log(Add(1, 2));
         string content = File.ReadAllText(Application.streamingAssetsPath + "/aa.json");
-        HotfixMethodInfo method = HotfixRunner.Create(content);
+        HotfixFunc method = HotfixRunner.Create(content);
+        var result = method.Invoke(1, 2);
+        Debug.Log(result);
     }
 
     [Hotfix]

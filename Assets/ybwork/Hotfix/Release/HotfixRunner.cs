@@ -1,16 +1,14 @@
 ﻿using Newtonsoft.Json;
-using System;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 
 namespace Hotfix
 {
     public class HotfixRunner
     {
-        public static HotfixMethodInfo Create(string content)
+        public static HotfixFunc Create(string content)
         {
             HotfixMethodInfo method = JsonConvert.DeserializeObject<HotfixMethodInfo>(content);
-            return method;
+            return new HotfixFunc(method);
         }
 
         public static T Run<T>()

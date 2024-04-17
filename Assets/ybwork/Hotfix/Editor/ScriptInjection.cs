@@ -10,7 +10,8 @@ namespace Hotfix.Editor
 {
     public static class ScriptInjection
     {
-        static string _dllPath = "Library/ScriptAssemblies";
+        static readonly string _dllPath = "Library/ScriptAssemblies";
+
         public static void Generate(string dllName)
         {
             using FileStream fsSourse = new(Path.Combine(_dllPath, dllName), FileMode.Open);
@@ -106,7 +107,7 @@ namespace Hotfix.Editor
                             result.Operand = str;
                         }
                         else
-                            throw new System.Exception("错误的OperandType:" + operand.GetType());
+                            throw new Exception("错误的OperandType:" + operand.GetType());
                     }
                     return result;
                 })
@@ -123,7 +124,7 @@ namespace Hotfix.Editor
                 return;
 
             Instruction firstInstruction = processor.Body.Instructions[0];
-            Instruction lastInstruction = processor.Body.Instructions[^1];
+            //Instruction lastInstruction = processor.Body.Instructions[^1];
 
             MethodReference runMethodReference;
             if (methodDefinition.ReturnType.FullName == typeof(void).FullName)
@@ -146,28 +147,6 @@ namespace Hotfix.Editor
 
             processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Call, runMethodReference));
             processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Ret));
-
-
-            //processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Ldsfld, fieldDefinition));
-            //processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Ldnull));
-            //processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Cgt_Un));
-            //processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Stloc, flagIndex));
-            //processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Ldloc, flagIndex));
-            //processor.InsertBefore(firstInstruction, processor.Create(
-            //    OpCodes.Brfalse_S,
-            //    processor.Body.Instructions[6]));
-            //processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Ldsfld, fieldDefinition));
-            //processor.InsertBefore(firstInstruction, processor.Create(
-            //    OpCodes.Ldstr,
-            //    methodDefinition.DeclaringType.FullName + ":" + methodDefinition.Name));
-            //for (int i = 1; i <= methodDefinition.Parameters.Count; i++)
-            //{
-            //    processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Ldarg, i));
-            //}
-            //processor.InsertBefore(firstInstruction, processor.Create(
-            //    OpCodes.Callvirt,
-            //    assembiy.MainModule.ImportReference(funcType.GetMethod("Invoke"))));
-            //processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Ret));
         }
 
         private static MethodReference MakeGenericMethod(MethodReference runMethodReference, params TypeReference[] types)
