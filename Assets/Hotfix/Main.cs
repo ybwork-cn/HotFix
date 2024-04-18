@@ -1,22 +1,14 @@
-﻿using Hotfix;
+﻿using System.Runtime.CompilerServices;
 using UnityEngine;
 
 public class Main : MonoBehaviour
 {
-    public string aaa;
-    public string bbb
-    {
-        get;
-        //[Hotfix]
-        private set;
-    }
-
     void Start()
     {
-        Debug.Log(Add(1, 2));
+        Debug.Log("返回值:" + Add(1, 2));
     }
 
-    [Hotfix]
+    [MethodImpl(MethodImplOptions.NoInlining)]
     public int Add(int a, int b)
     {
         int v = a - b;

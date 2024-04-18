@@ -10,11 +10,9 @@ namespace Hotfix.Editor
 {
     public static class ScriptInjection
     {
-        static readonly string _dllPath = "Library/ScriptAssemblies";
-
         public static void GenerateHotfixIL(string dllName)
         {
-            using FileStream fsSourse = new(Path.Combine(_dllPath, dllName), FileMode.Open);
+            using FileStream fsSourse = new(dllName, FileMode.Open);
             using MemoryStream ms = new MemoryStream();
             fsSourse.CopyTo(ms);
             ms.Position = 0;
@@ -40,7 +38,7 @@ namespace Hotfix.Editor
 
         public static void ILInjection(string dllName)
         {
-            using FileStream fsSourse = new(Path.Combine(_dllPath, dllName), FileMode.Open);
+            using FileStream fsSourse = new(dllName, FileMode.Open);
             using MemoryStream ms = new MemoryStream();
             fsSourse.CopyTo(ms);
             ms.Position = 0;
@@ -65,7 +63,6 @@ namespace Hotfix.Editor
         {
             HotfixMethodInfo methodInfo = Convert(methodDefinition);
             string content = JsonConvert.SerializeObject(methodInfo, Formatting.Indented);
-            Debug.Log(content);
             Directory.CreateDirectory(Application.streamingAssetsPath);
             File.WriteAllText(Application.streamingAssetsPath + "/aa.json", content);
         }
@@ -160,10 +157,16 @@ namespace Hotfix.Editor
             System.Reflection.MethodInfo judgeMethod = typeof(HotfixRunner).GetMethod("IsHotfixMethod");
             MethodReference judgeMethodReference = assembly.MainModule.ImportReference(judgeMethod);
 
+            System.Reflection.ConstructorInfo stackTraceConstructor = typeof(System.Diagnostics.StackTrace).GetConstructor(Array.Empty<Type>());
+            MethodReference stacktraceType = assembly.MainModule.ImportReference(stackTraceConstructor);
+            processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Newobj, stacktraceType));
             processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Call, judgeMethodReference));
             processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Brfalse_S, firstInstruction));
 
-            processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Ldarg_0));
+            if (methodDefinition.IsStatic)
+                processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Ldnull));
+            else
+                processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Ldarg_0));
             processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Call, runMethodReference));
             processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Ret));
         }

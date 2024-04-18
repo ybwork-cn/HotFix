@@ -1,6 +1,5 @@
 ﻿using Newtonsoft.Json;
 using System.IO;
-using System.Runtime.CompilerServices;
 using UnityEngine;
 
 namespace Hotfix
@@ -31,11 +30,12 @@ namespace Hotfix
             var method = stackTrace.GetFrame(1).GetMethod();
         }
 
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        public static bool IsHotfixMethod()
+        public static bool IsHotfixMethod(System.Diagnostics.StackTrace stackTrace)
         {
-            System.Diagnostics.StackTrace stackTrace = new();
-            var method = stackTrace.GetFrame(1).GetMethod();
+            if (Application.isEditor)
+                return false;
+
+            System.Reflection.MethodBase method = stackTrace.GetFrame(0).GetMethod();
             return method.DeclaringType.FullName == "Main" && method.Name == "Add";
         }
     }
