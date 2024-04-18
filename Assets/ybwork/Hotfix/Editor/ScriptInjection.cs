@@ -12,7 +12,7 @@ namespace Hotfix.Editor
     {
         static readonly string _dllPath = "Library/ScriptAssemblies";
 
-        public static void Generate(string dllName)
+        public static void GenerateHotfixIL(string dllName)
         {
             using FileStream fsSourse = new(Path.Combine(_dllPath, dllName), FileMode.Open);
             using MemoryStream ms = new MemoryStream();
@@ -34,12 +34,30 @@ namespace Hotfix.Editor
                         // IL序列化
                         GenerateIL(methedDef);
                     }
+                }
+            }
+        }
+
+        public static void ILInjection(string dllName)
+        {
+            using FileStream fsSourse = new(Path.Combine(_dllPath, dllName), FileMode.Open);
+            using MemoryStream ms = new MemoryStream();
+            fsSourse.CopyTo(ms);
+            ms.Position = 0;
+
+            AssemblyDefinition assembiy = AssemblyDefinition.ReadAssembly(ms);
+
+            /// 遍历程序所有方法，进行代码注入
+            /// 对所有方法，嵌入一段代码，检查该方法是否为热更新代码，如果是热更新代码，执行热更新逻辑
+            /// 对标记了<see cref="HotfixAttribute"/>的方法，将其IL序列化
+            foreach (TypeDefinition typeDef in assembiy.MainModule.Types)
+            {
+                foreach (MethodDefinition methedDef in typeDef.Methods)
+                {
                     // 代码注入
                     InjectionHotfix(assembiy, methedDef);
                 }
             }
-            string newpath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop) + "/aa.dll";
-            using FileStream fsTarget = new FileStream(newpath, FileMode.OpenOrCreate);
             assembiy.Write(fsSourse);
         }
 
@@ -145,6 +163,7 @@ namespace Hotfix.Editor
             processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Call, judgeMethodReference));
             processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Brfalse_S, firstInstruction));
 
+            processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Ldarg_0));
             processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Call, runMethodReference));
             processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Ret));
         }

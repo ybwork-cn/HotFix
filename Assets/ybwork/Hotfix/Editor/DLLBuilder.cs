@@ -17,10 +17,16 @@ namespace Hotfix.Editor
             CompilationPipeline.RequestScriptCompilation(RequestScriptCompilationOptions.CleanBuildCache);
         }
 
-        [MenuItem("Tools/Script Generate", priority = 2)]
-        public static void ScriptGenerate()
+        [MenuItem("Tools/Generate Hotfix IL", priority = 2)]
+        public static void GenerateHotfixIL()
         {
-            ScriptInjection.Generate("Hotfix.dll");
+            ScriptInjection.GenerateHotfixIL("Hotfix.dll");
+        }
+
+        [MenuItem("Tools/IL Injection", priority = 3)]
+        public static void ILInjection()
+        {
+            ScriptInjection.ILInjection("Hotfix.dll");
         }
     }
 }

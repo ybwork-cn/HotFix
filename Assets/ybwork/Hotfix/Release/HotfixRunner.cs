@@ -1,5 +1,7 @@
 ﻿using Newtonsoft.Json;
+using System.IO;
 using System.Runtime.CompilerServices;
+using UnityEngine;
 
 namespace Hotfix
 {
@@ -11,13 +13,22 @@ namespace Hotfix
             return new HotfixFunc(method);
         }
 
-        public static T Run<T>()
+        public static T Run<T>(object obj)
         {
-            return default;
+            System.Diagnostics.StackTrace stackTrace = new();
+            var method = stackTrace.GetFrame(1).GetMethod();
+
+            string content = File.ReadAllText(Application.streamingAssetsPath + "/aa.json");
+            HotfixFunc func = Create(content);
+            object result = func.Invoke(obj, 2, 3);
+
+            return (T)result;
         }
 
-        public static void RunVoid()
+        public static void RunVoid(object obj)
         {
+            System.Diagnostics.StackTrace stackTrace = new();
+            var method = stackTrace.GetFrame(1).GetMethod();
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
