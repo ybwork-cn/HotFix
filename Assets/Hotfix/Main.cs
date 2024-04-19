@@ -1,4 +1,5 @@
-﻿using System.Runtime.CompilerServices;
+﻿using Hotfix;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 
 public class Main : MonoBehaviour
@@ -8,6 +9,7 @@ public class Main : MonoBehaviour
         Debug.Log("返回值:" + Add(1, 2));
     }
 
+    [Hotfix]
     [MethodImpl(MethodImplOptions.NoInlining)]
     public int Add(int a, int b)
     {

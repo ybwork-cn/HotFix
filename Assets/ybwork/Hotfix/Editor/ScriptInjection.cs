@@ -64,7 +64,9 @@ namespace Hotfix.Editor
             HotfixMethodInfo methodInfo = Convert(methodDefinition);
             string content = JsonConvert.SerializeObject(methodInfo, Formatting.Indented);
             Directory.CreateDirectory(Application.streamingAssetsPath);
-            File.WriteAllText(Application.streamingAssetsPath + "/aa.json", content);
+            string name = methodDefinition.DeclaringType.FullName + "." + methodDefinition.Name;
+            string path = Path.Combine(HotfixRunner.RootPath, name + ".json");
+            File.WriteAllText(path, content);
         }
 
         private static HotfixMethodInfo Convert(MethodDefinition methodDefinition)
@@ -163,6 +165,7 @@ namespace Hotfix.Editor
             processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Call, judgeMethodReference));
             processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Brfalse_S, firstInstruction));
 
+            processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Newobj, stacktraceType));
             if (methodDefinition.IsStatic)
                 processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Ldnull));
             else

@@ -1,4 +1,5 @@
-﻿using UnityEditor;
+﻿using System.IO;
+using UnityEditor;
 using UnityEditor.Compilation;
 using UnityEngine;
 
@@ -21,8 +22,12 @@ namespace Hotfix.Editor
         [MenuItem("Tools/Generate Hotfix IL", priority = 2)]
         public static void GenerateHotfixIL()
         {
+            Directory.Delete(HotfixRunner.RootPath, true);
+            Directory.CreateDirectory(HotfixRunner.RootPath);
+
             ScriptInjection.GenerateHotfixIL("Library/ScriptAssemblies/Hotfix.dll");
-            Debug.Log("Generate Hotfix IL Succeed");
+
+            Debug.Log("Generate Hotfix IL Succeed: " + HotfixRunner.RootPath);
         }
 
         [MenuItem("Tools/IL Injection", priority = 3)]
