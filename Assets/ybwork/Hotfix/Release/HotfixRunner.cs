@@ -41,7 +41,7 @@ namespace Hotfix
             string name = method.DeclaringType.FullName + "." + method.Name;
 
             HotfixFunc func = Create(name);
-
+            Debug.Log("执行热更逻辑:" + name);
             object result = func.Invoke(obj, paras);
             return (T)result;
         }
@@ -52,7 +52,7 @@ namespace Hotfix
             string name = method.DeclaringType.FullName + "." + method.Name;
 
             HotfixFunc func = Create(name);
-
+            Debug.Log("执行热更逻辑:" + name);
             func.InvokeVoid(obj, paras);
         }
 

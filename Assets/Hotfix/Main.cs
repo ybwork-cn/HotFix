@@ -1,5 +1,6 @@
 ﻿using Hotfix;
 using System.Collections;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using UnityEngine;
 
@@ -9,18 +10,13 @@ public class Main : MonoBehaviour
     {
         yield return HotfixRunner.InitAsync();
         Debug.Log("初始化完成");
-        Debug.Log("返回值:" + Add(3, 4));
+        Debug.Log("返回值:" + Add(3, 4, 5, 6));
     }
 
     [Hotfix]
     [MethodImpl(MethodImplOptions.NoInlining)]
-    public int Add(int a, int b)
+    public int Add(params int[] arr)
     {
-        int x = 0;
-        for (int i = 0; i < a; i++)
-        {
-            x += b;
-        }
-        return x;
+        return arr.Sum();
     }
 }
