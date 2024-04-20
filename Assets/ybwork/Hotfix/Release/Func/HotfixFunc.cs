@@ -77,6 +77,14 @@ namespace Hotfix
                         vars[1] = stack.Pop();
                         instructionIndex = instruction.NextOffset;
                         break;
+                    case HotfixOpCode.Stloc_2:
+                        vars[2] = stack.Pop();
+                        instructionIndex = instruction.NextOffset;
+                        break;
+                    case HotfixOpCode.Stloc_3:
+                        vars[3] = stack.Pop();
+                        instructionIndex = instruction.NextOffset;
+                        break;
                     case HotfixOpCode.Ldarg_S:
                         {
                             int index = Convert.ToInt32(instruction.Operand);
@@ -177,6 +185,16 @@ namespace Hotfix
                     case HotfixOpCode.Br_S:
                         instructionIndex = Convert.ToInt32(instruction.Operand);
                         break;
+                    case HotfixOpCode.Brtrue_S:
+                        {
+                            object value = stack.Pop();
+                            bool boolValue = Convert.ToBoolean(value);
+                            if (boolValue)
+                                instructionIndex = Convert.ToInt32(instruction.Operand);
+                            else
+                                instructionIndex = instruction.NextOffset;
+                            break;
+                        }
                     case HotfixOpCode.Beq_S:
                         {
                             object v2 = stack.Pop();
@@ -266,11 +284,88 @@ namespace Hotfix
                             instructionIndex = instruction.NextOffset;
                             break;
                         }
+                    case HotfixOpCode.Mul:
+                        {
+                            object v2 = stack.Pop();
+                            object v1 = stack.Pop();
+                            var result = OPOperator.Mul(new OpValue(v1), new OpValue(v2)).ObjectValue;
+                            stack.Push(result);
+                            instructionIndex = instruction.NextOffset;
+                            break;
+                        }
+                    case HotfixOpCode.Div:
+                        {
+                            object v2 = stack.Pop();
+                            object v1 = stack.Pop();
+                            var result = OPOperator.Div(new OpValue(v1), new OpValue(v2)).ObjectValue;
+                            stack.Push(result);
+                            instructionIndex = instruction.NextOffset;
+                            break;
+                        }
+                    case HotfixOpCode.Conv_I4:
+                        {
+                            object value = stack.Pop();
+                            int intValue = Convert.ToInt32(value);
+                            stack.Push(intValue);
+                            instructionIndex = instruction.NextOffset;
+                            break;
+                        }
+                    case HotfixOpCode.Callvirt:
+                        {
+                            string methodFullName = (string)instruction.Operand;
+                            Regex regex = new Regex("^(\\S*) (\\S*)::(\\S*)\\((\\S*)\\)$");
+                            Match match = regex.Match(methodFullName);
+                            Type type = TypeManager.GetType(match.Groups[2].Value);
+                            string methodName = match.Groups[3].Value;
+                            Type[] paraTypes = match.Groups[4].Value
+                                .Split(',')
+                                .Where(name => !string.IsNullOrEmpty(name))
+                                .Select(name => TypeManager.GetType(name))
+                                .ToArray();
+                            MethodInfo method = type.GetMethod(methodName, paraTypes);
+                            object[] paraValues = new object[paraTypes.Length];
+                            for (int i = 0; i < paraTypes.Length; i++)
+                            {
+                                paraValues[paraTypes.Length - 1 - i] = stack.Pop();
+                            }
+                            object obj = stack.Pop();
+                            if (method.ReturnType == typeof(void))
+                                method.Invoke(obj, paraValues);
+                            else
+                            {
+                                object result = method.Invoke(obj, paraValues);
+                                stack.Push(result);
+                            }
+                            instructionIndex = instruction.NextOffset;
+                            break;
+                        }
                     case HotfixOpCode.Box:
                         // TODO:stack中不保存object，而是OpValue，以应对装箱拆箱操作
                         // 装箱指令不需要单独操作
                         instructionIndex = instruction.NextOffset;
                         break;
+                    case HotfixOpCode.Ldlen:
+                        {
+                            object arr = stack.Pop();
+                            int len = (arr as Array).Length;
+                            stack.Push(len);
+                            instructionIndex = instruction.NextOffset;
+                            break;
+                        }
+                    case HotfixOpCode.Ldelem_I4:
+                        {
+                            int index = Convert.ToInt32(stack.Pop());
+                            Array arr = stack.Pop() as Array;
+                            object item = arr.GetValue(index);
+                            stack.Push(item);
+                            instructionIndex = instruction.NextOffset;
+                            break;
+                        }
+                    case HotfixOpCode.Leave_S:
+                        {
+                            instructionIndex = Convert.ToInt32(instruction.Operand);
+                            break;
+                        }
                     default: throw new Exception("未识别的IL指令:" + instruction.Code.ToString());
                 }
             }
