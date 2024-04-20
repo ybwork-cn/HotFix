@@ -9,16 +9,18 @@ public class Main : MonoBehaviour
     {
         yield return HotfixRunner.InitAsync();
         Debug.Log("初始化完成");
-        Debug.Log("返回值:" + Add(1, 2));
+        Debug.Log("返回值:" + Add(3, 4));
     }
 
     [Hotfix]
     [MethodImpl(MethodImplOptions.NoInlining)]
     public int Add(int a, int b)
     {
-        if (a + b != 10)
-            return a + b;
-        string v = a.ToString() + b.ToString();
-        return int.Parse(v);
+        int x = 0;
+        for (int i = 0; i < a; i++)
+        {
+            x += b;
+        }
+        return x;
     }
 }

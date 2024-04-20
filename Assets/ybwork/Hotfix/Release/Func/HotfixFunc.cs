@@ -34,6 +34,9 @@ namespace Hotfix
                 HotfixInstruction instruction = MethodInfo.Body.Instructions[instructionIndex];
                 switch (instruction.Code)
                 {
+                    case HotfixOpCode.Nop:
+                        instructionIndex = instruction.NextOffset;
+                        break;
                     case HotfixOpCode.Ldarg_0:
                         stack.Push(paras[0]);
                         instructionIndex = instruction.NextOffset;
@@ -50,6 +53,30 @@ namespace Hotfix
                         stack.Push(paras[2]);
                         instructionIndex = instruction.NextOffset;
                         break;
+                    case HotfixOpCode.Ldloc_0:
+                        stack.Push(vars[0]);
+                        instructionIndex = instruction.NextOffset;
+                        break;
+                    case HotfixOpCode.Ldloc_1:
+                        stack.Push(vars[1]);
+                        instructionIndex = instruction.NextOffset;
+                        break;
+                    case HotfixOpCode.Ldloc_2:
+                        stack.Push(vars[2]);
+                        instructionIndex = instruction.NextOffset;
+                        break;
+                    case HotfixOpCode.Ldloc_3:
+                        stack.Push(vars[3]);
+                        instructionIndex = instruction.NextOffset;
+                        break;
+                    case HotfixOpCode.Stloc_0:
+                        vars[0] = stack.Pop();
+                        instructionIndex = instruction.NextOffset;
+                        break;
+                    case HotfixOpCode.Stloc_1:
+                        vars[1] = stack.Pop();
+                        instructionIndex = instruction.NextOffset;
+                        break;
                     case HotfixOpCode.Ldarg_S:
                         {
                             int index = Convert.ToInt32(instruction.Operand);
@@ -58,11 +85,45 @@ namespace Hotfix
                             break;
                         }
                     case HotfixOpCode.Ldnull:
-                        {
-                            stack.Push(null);
-                            instructionIndex = instruction.NextOffset;
-                            break;
-                        }
+                        stack.Push(null);
+                        instructionIndex = instruction.NextOffset;
+                        break;
+                    case HotfixOpCode.Ldc_I4_0:
+                        stack.Push(0);
+                        instructionIndex = instruction.NextOffset;
+                        break;
+                    case HotfixOpCode.Ldc_I4_1:
+                        stack.Push(1);
+                        instructionIndex = instruction.NextOffset;
+                        break;
+                    case HotfixOpCode.Ldc_I4_2:
+                        stack.Push(2);
+                        instructionIndex = instruction.NextOffset;
+                        break;
+                    case HotfixOpCode.Ldc_I4_3:
+                        stack.Push(3);
+                        instructionIndex = instruction.NextOffset;
+                        break;
+                    case HotfixOpCode.Ldc_I4_4:
+                        stack.Push(4);
+                        instructionIndex = instruction.NextOffset;
+                        break;
+                    case HotfixOpCode.Ldc_I4_5:
+                        stack.Push(5);
+                        instructionIndex = instruction.NextOffset;
+                        break;
+                    case HotfixOpCode.Ldc_I4_6:
+                        stack.Push(6);
+                        instructionIndex = instruction.NextOffset;
+                        break;
+                    case HotfixOpCode.Ldc_I4_7:
+                        stack.Push(7);
+                        instructionIndex = instruction.NextOffset;
+                        break;
+                    case HotfixOpCode.Ldc_I4_8:
+                        stack.Push(8);
+                        instructionIndex = instruction.NextOffset;
+                        break;
                     case HotfixOpCode.Ldc_I4_S:
                         {
                             sbyte value = Convert.ToSByte(instruction.Operand);
@@ -113,6 +174,9 @@ namespace Hotfix
                             object result = stack.Pop();
                             return result;
                         }
+                    case HotfixOpCode.Br_S:
+                        instructionIndex = Convert.ToInt32(instruction.Operand);
+                        break;
                     case HotfixOpCode.Beq_S:
                         {
                             object v2 = stack.Pop();
@@ -203,12 +267,10 @@ namespace Hotfix
                             break;
                         }
                     case HotfixOpCode.Box:
-                        {
-                            // TODO:stack中不保存object，而是OpValue，以应对装箱拆箱操作
-                            // 装箱指令不需要单独操作
-                            instructionIndex = instruction.NextOffset;
-                            break;
-                        }
+                        // TODO:stack中不保存object，而是OpValue，以应对装箱拆箱操作
+                        // 装箱指令不需要单独操作
+                        instructionIndex = instruction.NextOffset;
+                        break;
                     default: throw new Exception("未识别的IL指令:" + instruction.Code.ToString());
                 }
             }
