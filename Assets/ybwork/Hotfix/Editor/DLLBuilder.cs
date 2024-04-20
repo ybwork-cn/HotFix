@@ -1,12 +1,17 @@
-﻿using System.IO;
+﻿using Newtonsoft.Json;
+using System.Collections.Generic;
+using System.IO;
+using System.Xml.Linq;
 using UnityEditor;
 using UnityEditor.Compilation;
 using UnityEngine;
 
 namespace Hotfix.Editor
 {
-    public static class DLLBuilder
+    internal static class DLLBuilder
     {
+        private const string _dllName = "Library/ScriptAssemblies/Hotfix.dll";
+
         [MenuItem("Tools/Switch to Release Mode", priority = 0)]
         public static void SwitchToReleaseMode()
         {
@@ -22,10 +27,22 @@ namespace Hotfix.Editor
         [MenuItem("Tools/Generate Hotfix IL", priority = 2)]
         public static void GenerateHotfixIL()
         {
-            Directory.Delete(HotfixRunner.RootPath, true);
+            if (Directory.Exists(HotfixRunner.RootPath))
+                Directory.Delete(HotfixRunner.RootPath, true);
             Directory.CreateDirectory(HotfixRunner.RootPath);
 
-            ScriptInjection.GenerateHotfixIL("Library/ScriptAssemblies/Hotfix.dll");
+            List<string> methodNames = new List<string>();
+            IEnumerable<HotfixMethodInfo> methods = ScriptInjection.GenerateHotfixIL(_dllName);
+            foreach (HotfixMethodInfo method in methods)
+            {
+                string content = JsonConvert.SerializeObject(method, Formatting.Indented);
+                string name = method.Name;
+                methodNames.Add(name);
+                string path = Path.Combine(HotfixRunner.RootPath, name + ".json");
+                File.WriteAllText(path, content);
+            }
+            string catalogueContent = JsonConvert.SerializeObject(methodNames, Formatting.Indented);
+            File.WriteAllText(Path.Combine(HotfixRunner.RootPath, "catalogue.json"), catalogueContent);
 
             Debug.Log("Generate Hotfix IL Succeed: " + HotfixRunner.RootPath);
         }

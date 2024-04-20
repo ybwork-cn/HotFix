@@ -1,46 +1,12 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
-using UnityEngine;
 
 namespace Hotfix
 {
-    internal static class TypeManager
-    {
-        private static readonly List<Assembly> Assemblies = new();
-        private static readonly Dictionary<string, Type> Types = new();
-        static TypeManager()
-        {
-            Assemblies.Add(typeof(object).Assembly);
-            Assemblies.Add(typeof(TypeManager).Assembly);
-            Assemblies.Add(typeof(MonoBehaviour).Assembly);
-        }
-        public static Type GetType(string name)
-        {
-            if (Types.TryGetValue(name, out Type type))
-                return type;
-
-            StackTrace stackTrace = new();
-            StackFrame frame = stackTrace.GetFrame(stackTrace.FrameCount - 1);
-            Assembly entryAssembly = frame.GetMethod().DeclaringType.Assembly;
-            if (!Assemblies.Contains(entryAssembly))
-                Assemblies.Add(entryAssembly);
-
-            foreach (var assembly in Assemblies)
-            {
-                type = assembly.GetType(name);
-                if (type != null)
-                    break;
-            }
-            if (type == null)
-                throw new Exception(name);
-            return type;
-        }
-    }
     public class HotfixFunc
     {
         internal readonly HotfixMethodInfo MethodInfo;
@@ -125,9 +91,18 @@ namespace Hotfix
                         }
                     case HotfixOpCode.Add:
                         {
-                            object a = stack.Pop();
-                            object b = stack.Pop();
-                            var result = OPOperator.Add(new OpValue(a), new OpValue(b)).ObjectValue;
+                            object v2 = stack.Pop();
+                            object v1 = stack.Pop();
+                            var result = OPOperator.Add(new OpValue(v2), new OpValue(v1)).ObjectValue;
+                            stack.Push(result);
+                            instructionIndex++;
+                            break;
+                        }
+                    case HotfixOpCode.Sub:
+                        {
+                            object v2 = stack.Pop();
+                            object v1 = stack.Pop();
+                            var result = OPOperator.Sub(new OpValue(v1), new OpValue(v2)).ObjectValue;
                             stack.Push(result);
                             instructionIndex++;
                             break;

@@ -2,15 +2,17 @@
 using Mono.Cecil.Cil;
 using Newtonsoft.Json;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using UnityEngine;
 
 namespace Hotfix.Editor
 {
-    public static class ScriptInjection
+    internal static class ScriptInjection
     {
-        public static void GenerateHotfixIL(string dllName)
+        public static IEnumerable<HotfixMethodInfo> GenerateHotfixIL(string dllName)
         {
             using FileStream fsSourse = new(dllName, FileMode.Open);
             using MemoryStream ms = new MemoryStream();
@@ -30,7 +32,8 @@ namespace Hotfix.Editor
                     if (methedDef.CustomAttributes.Any(attr => attr.AttributeType.FullName == hotFixAttribute))
                     {
                         // IL序列化
-                        GenerateIL(methedDef);
+                        HotfixMethodInfo methodInfo = Convert(methedDef);
+                        yield return methodInfo;
                     }
                 }
             }
@@ -59,19 +62,9 @@ namespace Hotfix.Editor
             assembiy.Write(fsSourse);
         }
 
-        private static void GenerateIL(MethodDefinition methodDefinition)
-        {
-            HotfixMethodInfo methodInfo = Convert(methodDefinition);
-            string content = JsonConvert.SerializeObject(methodInfo, Formatting.Indented);
-            Directory.CreateDirectory(Application.streamingAssetsPath);
-            string name = methodDefinition.DeclaringType.FullName + "." + methodDefinition.Name;
-            string path = Path.Combine(HotfixRunner.RootPath, name + ".json");
-            File.WriteAllText(path, content);
-        }
-
         private static HotfixMethodInfo Convert(MethodDefinition methodDefinition)
         {
-            string name = methodDefinition.Name;
+            string name = methodDefinition.DeclaringType.FullName + "." + methodDefinition.Name;
             string[] parameters = methodDefinition.Parameters
                 .Select(p => p.ParameterType.FullName)
                 .ToArray();
@@ -161,15 +154,59 @@ namespace Hotfix.Editor
 
             System.Reflection.ConstructorInfo stackTraceConstructor = typeof(System.Diagnostics.StackTrace).GetConstructor(Array.Empty<Type>());
             MethodReference stacktraceType = assembly.MainModule.ImportReference(stackTraceConstructor);
+            TypeReference objectType = assembly.MainModule.ImportReference(typeof(object));
+
+            // if (HotfixRunner.IsHotfixMethod(new StackTrace()))
+            //     执行嵌入逻辑
             processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Newobj, stacktraceType));
             processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Call, judgeMethodReference));
             processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Brfalse_S, firstInstruction));
 
             processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Newobj, stacktraceType));
+
+            // 获取this值
             if (methodDefinition.IsStatic)
                 processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Ldnull));
             else
                 processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Ldarg_0));
+
+            //var paras = new object[真实参数数量];
+            int paraCount = methodDefinition.Parameters.Count;
+            processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Ldc_I4_S, (sbyte)paraCount));
+            processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Newarr, objectType));
+            for (int i = 0; i < paraCount; i++)
+            {
+                int paraIndex = methodDefinition.IsStatic ? i : i + 1;
+                processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Dup));
+                processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Ldc_I4_S, (sbyte)i));
+                switch (paraIndex)
+                {
+                    // paras[i]=真实参数[i]
+                    case 0:
+                        processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Ldarg_0));
+                        break;
+                    case 1:
+                        processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Ldarg_1));
+                        break;
+                    case 2:
+                        processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Ldarg_2));
+                        break;
+                    case 3:
+                        processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Ldarg_3));
+                        break;
+                    default:
+                        processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Ldarg_S, (sbyte)paraIndex));
+                        break;
+                }
+                if (methodDefinition.Parameters[i].ParameterType.IsValueType)
+                {
+                    var parameterType = methodDefinition.Parameters[i].ParameterType;
+                    processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Box, parameterType));
+                }
+                processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Stelem_Ref));
+            }
+
+            //return HotfixRunner.Run<int>(new StackTrace(), this, paras)
             processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Call, runMethodReference));
             processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Ret));
         }

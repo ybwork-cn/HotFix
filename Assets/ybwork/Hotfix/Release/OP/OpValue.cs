@@ -35,46 +35,6 @@ namespace Hotfix
             _ => throw new NotImplementedException(),
         };
 
-        public OpValue(int value) : this()
-        {
-            ValueType = OpValueType.Int;
-            ObjectType = typeof(int);
-            IntValue = value;
-            ObjectValue = value;
-        }
-
-        public OpValue(float value) : this()
-        {
-            ValueType = OpValueType.Float;
-            ObjectType = typeof(float);
-            FloatValue = value;
-            ObjectValue = value;
-        }
-
-        public OpValue(double value) : this()
-        {
-            ValueType = OpValueType.Double;
-            ObjectType = typeof(double);
-            DoubleValue = value;
-            ObjectValue = value;
-        }
-
-        public OpValue(bool value) : this()
-        {
-            ValueType = OpValueType.Bool;
-            ObjectType = typeof(bool);
-            BoolValue = value;
-            ObjectValue = value;
-        }
-
-        public OpValue(string value) : this()
-        {
-            ValueType = OpValueType.String;
-            ObjectType = typeof(string);
-            StringValue = value;
-            ObjectValue = value;
-        }
-
         public OpValue(object value) : this()
         {
             if (value is int intValue)
