@@ -4,8 +4,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
-using UnityEngine;
-using static UnityEngine.Networking.UnityWebRequest;
 
 namespace Hotfix
 {
@@ -37,35 +35,46 @@ namespace Hotfix
                 switch (instruction.Code)
                 {
                     case HotfixOpCode.Ldarg_0:
-                        stack.Push(GetParamValue(paras, 0));
-                        instructionIndex++;
+                        stack.Push(paras[0]);
+                        instructionIndex = instruction.NextOffset;
                         break;
                     case HotfixOpCode.Ldarg_1:
-                        stack.Push(GetParamValue(paras, 1));
-                        instructionIndex++;
+                        stack.Push(paras[1]);
+                        instructionIndex = instruction.NextOffset;
                         break;
                     case HotfixOpCode.Ldarg_2:
-                        stack.Push(GetParamValue(paras, 2));
-                        instructionIndex++;
+                        stack.Push(paras[2]);
+                        instructionIndex = instruction.NextOffset;
+                        break;
+                    case HotfixOpCode.Ldarg_3:
+                        stack.Push(paras[2]);
+                        instructionIndex = instruction.NextOffset;
                         break;
                     case HotfixOpCode.Ldarg_S:
                         {
                             int index = Convert.ToInt32(instruction.Operand);
-                            stack.Push(GetParamValue(paras, index));
-                            instructionIndex++;
+                            stack.Push(paras[index]);
+                            instructionIndex = instruction.NextOffset;
                             break;
                         }
                     case HotfixOpCode.Ldnull:
                         {
                             stack.Push(null);
-                            instructionIndex++;
+                            instructionIndex = instruction.NextOffset;
+                            break;
+                        }
+                    case HotfixOpCode.Ldc_I4_S:
+                        {
+                            sbyte value = Convert.ToSByte(instruction.Operand);
+                            stack.Push(value);
+                            instructionIndex = instruction.NextOffset;
                             break;
                         }
                     case HotfixOpCode.Dup:
                         {
                             object result = stack.Peek();
                             stack.Push(result);
-                            instructionIndex++;
+                            instructionIndex = instruction.NextOffset;
                             break;
                         }
                     case HotfixOpCode.Call:
@@ -96,7 +105,7 @@ namespace Hotfix
                                 object result = method.Invoke(obj, paraValues);
                                 stack.Push(result);
                             }
-                            instructionIndex++;
+                            instructionIndex = instruction.NextOffset;
                             break;
                         }
                     case HotfixOpCode.Ret:
@@ -104,13 +113,84 @@ namespace Hotfix
                             object result = stack.Pop();
                             return result;
                         }
+                    case HotfixOpCode.Beq_S:
+                        {
+                            object v2 = stack.Pop();
+                            object v1 = stack.Pop();
+                            // v1==v2
+                            var result = OPOperator.Equal(new OpValue(v1), new OpValue(v2)).BoolValue;
+                            if (result)
+                                instructionIndex = Convert.ToInt32(instruction.Operand);
+                            else
+                                instructionIndex = instruction.NextOffset;
+                            break;
+                        }
+                    case HotfixOpCode.Bge_S:
+                        {
+                            object v2 = stack.Pop();
+                            object v1 = stack.Pop();
+                            // v1>=v2
+                            var result = OPOperator.Less(new OpValue(v2), new OpValue(v1)).BoolValue;
+                            if (result)
+                                instructionIndex = Convert.ToInt32(instruction.Operand);
+                            else
+                                instructionIndex = instruction.NextOffset;
+                            break;
+                        }
+                    case HotfixOpCode.Bgt_S:
+                        {
+                            object v2 = stack.Pop();
+                            object v1 = stack.Pop();
+                            // v1>v2
+                            var result = OPOperator.Greater(new OpValue(v1), new OpValue(v2)).BoolValue;
+                            if (result)
+                                instructionIndex = Convert.ToInt32(instruction.Operand);
+                            else
+                                instructionIndex = instruction.NextOffset;
+                            break;
+                        }
+                    case HotfixOpCode.Ble_S:
+                        {
+                            object v2 = stack.Pop();
+                            object v1 = stack.Pop();
+                            // v1<=v2
+                            var result = OPOperator.Greater(new OpValue(v2), new OpValue(v1)).BoolValue;
+                            if (result)
+                                instructionIndex = Convert.ToInt32(instruction.Operand);
+                            else
+                                instructionIndex = instruction.NextOffset;
+                            break;
+                        }
+                    case HotfixOpCode.Blt_S:
+                        {
+                            object v2 = stack.Pop();
+                            object v1 = stack.Pop();
+                            // v1<v2
+                            var result = OPOperator.Less(new OpValue(v1), new OpValue(v2)).BoolValue;
+                            if (result)
+                                instructionIndex = Convert.ToInt32(instruction.Operand);
+                            else
+                                instructionIndex = instruction.NextOffset;
+                            break;
+                        }
+                    case HotfixOpCode.Bne_Un_S:
+                        {
+                            object v2 = stack.Pop();
+                            object v1 = stack.Pop();
+                            var result = !OPOperator.Equal(new OpValue(v1), new OpValue(v2)).BoolValue;
+                            if (result)
+                                instructionIndex = Convert.ToInt32(instruction.Operand);
+                            else
+                                instructionIndex = instruction.NextOffset;
+                            break;
+                        }
                     case HotfixOpCode.Add:
                         {
                             object v2 = stack.Pop();
                             object v1 = stack.Pop();
                             var result = OPOperator.Add(new OpValue(v2), new OpValue(v1)).ObjectValue;
                             stack.Push(result);
-                            instructionIndex++;
+                            instructionIndex = instruction.NextOffset;
                             break;
                         }
                     case HotfixOpCode.Sub:
@@ -119,27 +199,19 @@ namespace Hotfix
                             object v1 = stack.Pop();
                             var result = OPOperator.Sub(new OpValue(v1), new OpValue(v2)).ObjectValue;
                             stack.Push(result);
-                            instructionIndex++;
+                            instructionIndex = instruction.NextOffset;
                             break;
                         }
                     case HotfixOpCode.Box:
                         {
                             // TODO:stack中不保存object，而是OpValue，以应对装箱拆箱操作
                             // 装箱指令不需要单独操作
-                            instructionIndex++;
+                            instructionIndex = instruction.NextOffset;
                             break;
                         }
                     default: throw new Exception("未识别的IL指令:" + instruction.Code.ToString());
                 }
             }
-        }
-
-        private object GetParamValue(IReadOnlyList<object> paras, int index)
-        {
-            if (MethodInfo.IsStatic)
-                return index;
-            else
-                return index + 1;
         }
 
         public void InvokeVoid(params object[] paras)

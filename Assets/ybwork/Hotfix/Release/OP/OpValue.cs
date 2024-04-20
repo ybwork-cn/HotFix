@@ -5,6 +5,7 @@ namespace Hotfix
     public enum OpValueType
     {
         Int = 0,
+        Sbyte,
         Float,
         Double,
         Bool,
@@ -15,6 +16,7 @@ namespace Hotfix
     public readonly struct OpValue
     {
         public readonly OpValueType ValueType;
+        public readonly sbyte SbyteValue;
         public readonly int IntValue;
         public readonly float FloatValue;
         public readonly double DoubleValue;
@@ -27,6 +29,7 @@ namespace Hotfix
         public readonly object RealValue => ValueType switch
         {
             OpValueType.Int => IntValue,
+            OpValueType.Sbyte => SbyteValue,
             OpValueType.Float => FloatValue,
             OpValueType.Double => DoubleValue,
             OpValueType.Bool => BoolValue,
@@ -37,10 +40,20 @@ namespace Hotfix
 
         public OpValue(object value) : this()
         {
+            if (value != null)
+                ObjectType = value.GetType();
+            else
+                ObjectType = typeof(object);
+
             if (value is int intValue)
             {
                 ValueType = OpValueType.Int;
                 IntValue = intValue;
+            }
+            else if (value is sbyte sbyteValue)
+            {
+                ValueType = OpValueType.Sbyte;
+                SbyteValue = sbyteValue;
             }
             else if (value is float floatValue)
             {
@@ -65,10 +78,6 @@ namespace Hotfix
             else
             {
                 ValueType = OpValueType.Object;
-                if (value != null)
-                    ObjectType = value.GetType();
-                else
-                    ObjectType = typeof(object);
             }
             ObjectValue = value;
         }

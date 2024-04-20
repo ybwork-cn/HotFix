@@ -86,14 +86,18 @@ namespace Hotfix.Editor
             string[] variables = methodBody.Variables
                 .Select(v => v.VariableType.FullName)
                 .ToArray();
-            HotfixInstruction[] instructions = methodBody.Instructions
-                .Select(instruction =>
+            Dictionary<int, HotfixInstruction> instructions = methodBody.Instructions
+                .ToDictionary(
+                    instruction => instruction.Offset,
+                    instruction =>
                 {
                     int offset = instruction.Offset;
                     HotfixOpCode code = (HotfixOpCode)(int)instruction.OpCode.Code;
                     object operand = instruction.Operand;
                     HotfixInstruction result = new HotfixInstruction();
                     result.Code = code;
+                    if (instruction.Next != null)
+                        result.NextOffset = instruction.Next.Offset;
                     if (operand != null)
                     {
                         if (operand is TypeReference typeReference)
@@ -115,19 +119,30 @@ namespace Hotfix.Editor
                         {
                             result.Code = HotfixOpCode.Ldarg_S;
                             result.OperandType = OperandType.Int;
-                            result.Operand = parameterDefinition.Index;
+                            if (methodBody.Method.IsStatic)
+                                result.Operand = parameterDefinition.Index;
+                            else
+                                result.Operand = parameterDefinition.Index + 1;
                         }
                         else if (operand is string str)
                         {
                             result.OperandType = OperandType.String;
                             result.Operand = str;
                         }
+                        else if (operand is sbyte sbyteValue)
+                        {
+                            result.OperandType = OperandType.Int;
+                            result.Operand = (int)sbyteValue;
+                        }
                         else
-                            throw new Exception("错误的OperandType:" + operand.GetType() + ",method:" + methodBody.Method.FullName);
+                        {
+                            result.OperandType = OperandType.Other;
+                            result.Operand = operand;
+                            throw new Exception("错误的OperandType:" + operand.GetType() + "--" + JsonConvert.SerializeObject(result));
+                        }
                     }
                     return result;
-                })
-                .ToArray();
+                });
             return new HotfixMethodBodyInfo(maxStackSize, variables, instructions);
         }
 

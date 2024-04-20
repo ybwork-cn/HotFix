@@ -16,6 +16,8 @@ public class Main : MonoBehaviour
     [MethodImpl(MethodImplOptions.NoInlining)]
     public int Add(int a, int b)
     {
+        if (a + b != 10)
+            return a + b;
         string v = a.ToString() + b.ToString();
         return int.Parse(v);
     }
