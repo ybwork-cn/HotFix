@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
+using UnityEngine;
+using static UnityEngine.Networking.UnityWebRequest;
 
 namespace Hotfix
 {
@@ -35,17 +37,24 @@ namespace Hotfix
                 switch (instruction.Code)
                 {
                     case HotfixOpCode.Ldarg_0:
-                        stack.Push(paras[0]);
+                        stack.Push(GetParamValue(paras, 0));
                         instructionIndex++;
                         break;
                     case HotfixOpCode.Ldarg_1:
-                        stack.Push(paras[1]);
+                        stack.Push(GetParamValue(paras, 1));
                         instructionIndex++;
                         break;
                     case HotfixOpCode.Ldarg_2:
-                        stack.Push(paras[2]);
+                        stack.Push(GetParamValue(paras, 2));
                         instructionIndex++;
                         break;
+                    case HotfixOpCode.Ldarg_S:
+                        {
+                            int index = Convert.ToInt32(instruction.Operand);
+                            stack.Push(GetParamValue(paras, index));
+                            instructionIndex++;
+                            break;
+                        }
                     case HotfixOpCode.Ldnull:
                         {
                             stack.Push(null);
@@ -68,19 +77,25 @@ namespace Hotfix
                             string methodName = match.Groups[3].Value;
                             Type[] paraTypes = match.Groups[4].Value
                                 .Split(',')
+                                .Where(name => !string.IsNullOrEmpty(name))
                                 .Select(name => TypeManager.GetType(name))
                                 .ToArray();
+                            MethodInfo method = type.GetMethod(methodName, paraTypes);
                             object[] paraValues = new object[paraTypes.Length];
                             for (int i = 0; i < paraTypes.Length; i++)
                             {
                                 paraValues[paraTypes.Length - 1 - i] = stack.Pop();
                             }
-                            MethodInfo method = type.GetMethod(methodName, paraTypes);
-                            if (method.IsStatic)
-                                method.Invoke(null, paraValues);
+                            object obj = null;
+                            if (!method.IsStatic)
+                                obj = stack.Pop();
+                            if (method.ReturnType == typeof(void))
+                                method.Invoke(obj, paraValues);
                             else
-                                //method.Invoke();
-                                throw new Exception();
+                            {
+                                object result = method.Invoke(obj, paraValues);
+                                stack.Push(result);
+                            }
                             instructionIndex++;
                             break;
                         }
@@ -117,6 +132,14 @@ namespace Hotfix
                     default: throw new Exception("未识别的IL指令:" + instruction.Code.ToString());
                 }
             }
+        }
+
+        private object GetParamValue(IReadOnlyList<object> paras, int index)
+        {
+            if (MethodInfo.IsStatic)
+                return index;
+            else
+                return index + 1;
         }
 
         public void InvokeVoid(params object[] paras)

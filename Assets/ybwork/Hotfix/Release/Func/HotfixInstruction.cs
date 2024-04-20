@@ -2,6 +2,9 @@
 {
     public enum OperandType
     {
+        None = 0,
+        Int,
+        Float,
         String,
         Method,
         Type,
@@ -10,7 +13,6 @@
 
     public class HotfixInstruction
     {
-        public int Offset;
         public HotfixOpCode Code;
         public OperandType OperandType;
         public object Operand;

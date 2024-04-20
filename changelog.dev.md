@@ -6,6 +6,8 @@
 - 嵌入的脚本支持传入当前参数
 - 判断文件是否存在的逻辑改为:增加文件目录，读取该目录以查询该文件是否存在
 - 读取文件的逻辑改为:通过UnityWebRequest读取(异步读取)
+- 支持IL码`Ldarg_S`
+- 修复bug：虚拟机调用具有返回值的函数时，未将返回值存至栈
 
 #### 注
 - 增加对更多IL指令的支持
@@ -24,3 +26,4 @@
       - `HotfixProperty`需要存储该属性的已被修改的访问符，以及该访问符所绑定的方法
 - 支持新类型的创建
 - class和struct实现方式不同
+- `HotfixAttribute`自动实现`MethodImpl(MethodImplOptions.NoInlining)`

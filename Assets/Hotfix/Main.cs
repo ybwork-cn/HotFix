@@ -16,7 +16,7 @@ public class Main : MonoBehaviour
     [MethodImpl(MethodImplOptions.NoInlining)]
     public int Add(int a, int b)
     {
-        int v = a + b;
-        return v;
+        string v = a.ToString() + b.ToString();
+        return int.Parse(v);
     }
 }

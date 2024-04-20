@@ -73,6 +73,7 @@ namespace Hotfix.Editor
             return new HotfixMethodInfo
             {
                 Name = name,
+                IsStatic = methodDefinition.IsStatic,
                 Parameters = parameters,
                 ReturnType = returnType,
                 Body = bodyInfo,
@@ -92,7 +93,6 @@ namespace Hotfix.Editor
                     HotfixOpCode code = (HotfixOpCode)(int)instruction.OpCode.Code;
                     object operand = instruction.Operand;
                     HotfixInstruction result = new HotfixInstruction();
-                    result.Offset = offset;
                     result.Code = code;
                     if (operand != null)
                     {
@@ -111,13 +111,19 @@ namespace Hotfix.Editor
                             result.OperandType = OperandType.Instruction;
                             result.Operand = targetInstruction.Offset;
                         }
+                        else if (operand is ParameterDefinition parameterDefinition && code == HotfixOpCode.Ldarga_S)
+                        {
+                            result.Code = HotfixOpCode.Ldarg_S;
+                            result.OperandType = OperandType.Int;
+                            result.Operand = parameterDefinition.Index;
+                        }
                         else if (operand is string str)
                         {
                             result.OperandType = OperandType.String;
                             result.Operand = str;
                         }
                         else
-                            throw new Exception("错误的OperandType:" + operand.GetType());
+                            throw new Exception("错误的OperandType:" + operand.GetType() + ",method:" + methodBody.Method.FullName);
                     }
                     return result;
                 })

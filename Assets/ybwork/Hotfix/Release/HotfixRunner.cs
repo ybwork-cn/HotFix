@@ -58,8 +58,8 @@ namespace Hotfix
 
         public static bool IsHotfixMethod(StackTrace stackTrace)
         {
-            if (Application.isEditor)
-                return false;
+            //if (Application.isEditor)
+            //    return false;
 
             MethodBase method = stackTrace.GetFrame(0).GetMethod();
             string name = method.DeclaringType.FullName + "." + method.Name;
