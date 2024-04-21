@@ -12,8 +12,11 @@
 - 增加对sbyte类型的支持
 - 增加更多IL指令(值比较大小)
 - 增加更多IL指令(循环)
+- 增加更多IL指令(位运算)
 
 #### 注
+- 位运算应支持所有整数类型，参考https://learn.microsoft.com/zh-cn/dotnet/api/system.reflection.emit.opcodes.shr?view=net-8.0&viewFallbackFrom=net-4.8
+- 支持sizeof
 - 增加对更多IL指令的支持
 - 支持现有类型的热更
   - 允许增删方法

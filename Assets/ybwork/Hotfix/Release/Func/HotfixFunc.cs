@@ -297,7 +297,52 @@ namespace Hotfix
                         {
                             object v2 = stack.Pop();
                             object v1 = stack.Pop();
-                            var result = OPOperator.Div(new OpValue(v1), new OpValue(v2)).ObjectValue;
+                            object result = OPOperator.Div(new OpValue(v1), new OpValue(v2)).ObjectValue;
+                            stack.Push(result);
+                            instructionIndex = instruction.NextOffset;
+                            break;
+                        }
+                    case HotfixOpCode.And:
+                        {
+                            int v2 = Convert.ToInt32(stack.Pop());
+                            int v1 = Convert.ToInt32(stack.Pop());
+                            int result = v1 & v2;
+                            stack.Push(result);
+                            instructionIndex = instruction.NextOffset;
+                            break;
+                        }
+                    case HotfixOpCode.Or:
+                        {
+                            int v2 = Convert.ToInt32(stack.Pop());
+                            int v1 = Convert.ToInt32(stack.Pop());
+                            int result = v1 | v2;
+                            stack.Push(result);
+                            instructionIndex = instruction.NextOffset;
+                            break;
+                        }
+                    case HotfixOpCode.Xor:
+                        {
+                            int v2 = Convert.ToInt32(stack.Pop());
+                            int v1 = Convert.ToInt32(stack.Pop());
+                            int result = v1 ^ v2;
+                            stack.Push(result);
+                            instructionIndex = instruction.NextOffset;
+                            break;
+                        }
+                    case HotfixOpCode.Shl:
+                        {
+                            int v2 = Convert.ToInt32(stack.Pop());
+                            int v1 = Convert.ToInt32(stack.Pop());
+                            int result = v1 << v2;
+                            stack.Push(result);
+                            instructionIndex = instruction.NextOffset;
+                            break;
+                        }
+                    case HotfixOpCode.Shr:
+                        {
+                            int v2 = Convert.ToInt32(stack.Pop());
+                            int v1 = Convert.ToInt32(stack.Pop());
+                            int result = v1 >> v2;
                             stack.Push(result);
                             instructionIndex = instruction.NextOffset;
                             break;

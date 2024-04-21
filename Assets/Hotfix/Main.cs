@@ -20,10 +20,10 @@ public class Main : MonoBehaviour
         int result = 0;
         foreach (var item in arr)
         {
-            if (item * item == 9)
+            if ((item >> 1) == 3)
                 continue;
             result += item;
-            if (item == 5)
+            if ((item << 1) == 4)
                 break;
         }
         return result;

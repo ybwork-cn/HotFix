@@ -18,7 +18,6 @@ namespace Hotfix
             Assemblies.Add(typeof(object).Assembly);
             Assemblies.Add(typeof(System.Linq.Enumerable).Assembly);
             Assemblies.Add(typeof(List<>).Assembly);
-            Assemblies.Add(typeof(IEnumerable<>).Assembly);
             Assemblies.Add(typeof(TypeManager).Assembly);
             Assemblies.Add(typeof(MonoBehaviour).Assembly);
         }
