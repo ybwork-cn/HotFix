@@ -92,6 +92,10 @@ namespace Hotfix
                             instructionIndex = instruction.NextOffset;
                             break;
                         }
+                    case HotfixOpCode.Ldloca_S:
+                        stack.Push(vars[0]);
+                        instructionIndex = instruction.NextOffset;
+                        break;
                     case HotfixOpCode.Ldnull:
                         stack.Push(null);
                         instructionIndex = instruction.NextOffset;
@@ -158,22 +162,40 @@ namespace Hotfix
                                 .Where(name => !string.IsNullOrEmpty(name))
                                 .Select(name => TypeManager.GetType(name))
                                 .ToArray();
-                            MethodInfo method = type.GetMethod(methodName, paraTypes);
                             object[] paraValues = new object[paraTypes.Length];
                             for (int i = 0; i < paraTypes.Length; i++)
                             {
                                 paraValues[paraTypes.Length - 1 - i] = stack.Pop();
                             }
-                            object obj = null;
-                            if (!method.IsStatic)
-                                obj = stack.Pop();
-                            if (method.ReturnType == typeof(void))
-                                method.Invoke(obj, paraValues);
+
+                            if (HotfixRunner.IsHotfixMethod(type, methodName, out HotfixMethodInfo methodInfo))
+                            {
+                                object obj = null;
+                                if (!methodInfo.IsStatic)
+                                    obj = stack.Pop();
+                                if (methodInfo.ReturnType == typeof(void).FullName)
+                                    HotfixRunner.RunVoid(methodInfo, obj, paraValues);
+                                else
+                                {
+                                    object result = HotfixRunner.Run(methodInfo, obj, paraValues);
+                                    stack.Push(result);
+                                }
+                            }
                             else
                             {
-                                object result = method.Invoke(obj, paraValues);
-                                stack.Push(result);
+                                MethodInfo method = type.GetMethod(methodName, paraTypes);
+                                object obj = null;
+                                if (!method.IsStatic)
+                                    obj = stack.Pop();
+                                if (method.ReturnType == typeof(void))
+                                    method.Invoke(obj, paraValues);
+                                else
+                                {
+                                    object result = method.Invoke(obj, paraValues);
+                                    stack.Push(result);
+                                }
                             }
+
                             instructionIndex = instruction.NextOffset;
                             break;
                         }
@@ -356,34 +378,11 @@ namespace Hotfix
                             break;
                         }
                     case HotfixOpCode.Callvirt:
-                        {
-                            string methodFullName = (string)instruction.Operand;
-                            Regex regex = new Regex("^(\\S*) (\\S*)::(\\S*)\\((\\S*)\\)$");
-                            Match match = regex.Match(methodFullName);
-                            Type type = TypeManager.GetType(match.Groups[2].Value);
-                            string methodName = match.Groups[3].Value;
-                            Type[] paraTypes = match.Groups[4].Value
-                                .Split(',')
-                                .Where(name => !string.IsNullOrEmpty(name))
-                                .Select(name => TypeManager.GetType(name))
-                                .ToArray();
-                            MethodInfo method = type.GetMethod(methodName, paraTypes);
-                            object[] paraValues = new object[paraTypes.Length];
-                            for (int i = 0; i < paraTypes.Length; i++)
-                            {
-                                paraValues[paraTypes.Length - 1 - i] = stack.Pop();
-                            }
-                            object obj = stack.Pop();
-                            if (method.ReturnType == typeof(void))
-                                method.Invoke(obj, paraValues);
-                            else
-                            {
-                                object result = method.Invoke(obj, paraValues);
-                                stack.Push(result);
-                            }
-                            instructionIndex = instruction.NextOffset;
-                            break;
-                        }
+                        goto case HotfixOpCode.Call;
+                    case HotfixOpCode.Ldstr:
+                        stack.Push((string)instruction.Operand);
+                        instructionIndex = instruction.NextOffset;
+                        break;
                     case HotfixOpCode.Box:
                         // TODO:stack中不保存object，而是OpValue，以应对装箱拆箱操作
                         // 装箱指令不需要单独操作

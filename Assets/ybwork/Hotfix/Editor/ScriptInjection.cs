@@ -1,12 +1,10 @@
 ﻿using Mono.Cecil;
 using Mono.Cecil.Cil;
-using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Security.Cryptography;
-using UnityEngine;
 
 namespace Hotfix.Editor
 {
@@ -110,6 +108,11 @@ namespace Hotfix.Editor
                             result.OperandType = OperandType.Method;
                             result.Operand = methodReference.FullName;
                         }
+                        else if (operand is VariableDefinition variableDefinition)
+                        {
+                            result.OperandType = OperandType.Variable;
+                            result.Operand = variableDefinition.Index;
+                        }
                         else if (operand is Instruction targetInstruction)
                         {
                             result.OperandType = OperandType.Instruction;
@@ -138,9 +141,10 @@ namespace Hotfix.Editor
                         {
                             result.OperandType = OperandType.Other;
                             result.Operand = operand;
-                            throw new Exception("错误的OperandType:" + operand.GetType() + "--" + JsonConvert.SerializeObject(result));
+                            throw new Exception("错误的OperandType:" + operand.GetType() + "--" + result.ToString());
                         }
                     }
+                    result.CodeString = result.ToString();
                     return result;
                 });
             return new HotfixMethodBodyInfo(maxStackSize, variables, instructions);
@@ -160,20 +164,26 @@ namespace Hotfix.Editor
             MethodReference runMethodReference;
             if (methodDefinition.ReturnType.FullName == typeof(void).FullName)
             {
-                System.Reflection.MethodInfo runMethod = typeof(HotfixRunner).GetMethod("RunVoid");
+                System.Reflection.MethodInfo runMethod = typeof(HotfixRunner).GetMethod(
+                    "RunVoid",
+                    new Type[] { typeof(StackTrace), typeof(object), typeof(object[]) });
                 runMethodReference = assembly.MainModule.ImportReference(runMethod);
             }
             else
             {
-                System.Reflection.MethodInfo runMethod = typeof(HotfixRunner).GetMethod("Run");
+                System.Reflection.MethodInfo runMethod = typeof(HotfixRunner).GetMethod(
+                    "Run",
+                    new Type[] { typeof(StackTrace), typeof(object), typeof(object[]) });
                 runMethodReference = assembly.MainModule.ImportReference(runMethod);
                 runMethodReference = MakeGenericMethod(runMethodReference, methodDefinition.ReturnType);
             }
 
-            System.Reflection.MethodInfo judgeMethod = typeof(HotfixRunner).GetMethod("IsHotfixMethod");
+            System.Reflection.MethodInfo judgeMethod = typeof(HotfixRunner).GetMethod(
+                "IsHotfixMethod",
+                new Type[] { typeof(StackTrace) });
             MethodReference judgeMethodReference = assembly.MainModule.ImportReference(judgeMethod);
 
-            System.Reflection.ConstructorInfo stackTraceConstructor = typeof(System.Diagnostics.StackTrace).GetConstructor(Array.Empty<Type>());
+            System.Reflection.ConstructorInfo stackTraceConstructor = typeof(StackTrace).GetConstructor(Array.Empty<Type>());
             MethodReference stacktraceType = assembly.MainModule.ImportReference(stackTraceConstructor);
             TypeReference objectType = assembly.MainModule.ImportReference(typeof(object));
 

@@ -31,10 +31,12 @@ namespace Hotfix
                 return GetGenericType(name);
 
             StackTrace stackTrace = new();
-            StackFrame frame = stackTrace.GetFrame(stackTrace.FrameCount - 1);
-            Assembly entryAssembly = frame.GetMethod().DeclaringType.Assembly;
-            if (!Assemblies.Contains(entryAssembly))
-                Assemblies.Add(entryAssembly);
+            foreach (StackFrame frame in stackTrace.GetFrames())
+            {
+                Assembly entryAssembly = frame.GetMethod().DeclaringType.Assembly;
+                if (!Assemblies.Contains(entryAssembly))
+                    Assemblies.Add(entryAssembly);
+            }
 
             foreach (var assembly in Assemblies)
             {

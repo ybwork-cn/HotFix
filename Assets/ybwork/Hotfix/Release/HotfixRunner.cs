@@ -1,8 +1,10 @@
 ﻿using Newtonsoft.Json;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
+using System.Xml.Linq;
 using UnityEngine;
 using UnityEngine.Networking;
 using Debug = UnityEngine.Debug;
@@ -46,6 +48,13 @@ namespace Hotfix
             return (T)result;
         }
 
+        public static object Run(HotfixMethodInfo methodInfo, object obj, params object[] paras)
+        {
+            HotfixFunc func = new HotfixFunc(methodInfo);
+            object result = func.Invoke(obj, paras);
+            return result;
+        }
+
         public static void RunVoid(StackTrace stackTrace, object obj, params object[] paras)
         {
             MethodBase method = stackTrace.GetFrame(0).GetMethod();
@@ -56,14 +65,25 @@ namespace Hotfix
             func.InvokeVoid(obj, paras);
         }
 
+        public static void RunVoid(HotfixMethodInfo methodInfo, object obj, params object[] paras)
+        {
+            HotfixFunc func = new HotfixFunc(methodInfo);
+            func.InvokeVoid(obj, paras);
+        }
+
         public static bool IsHotfixMethod(StackTrace stackTrace)
         {
             //if (Application.isEditor)
             //    return false;
 
             MethodBase method = stackTrace.GetFrame(0).GetMethod();
-            string name = method.DeclaringType.FullName + "." + method.Name;
-            return catalogue.ContainsKey(name);
+            return IsHotfixMethod(method.ReflectedType, method.Name, out _);
+        }
+
+        public static bool IsHotfixMethod(Type type, string methodName, out HotfixMethodInfo methodInfo)
+        {
+            string name = type.FullName + "." + methodName;
+            return catalogue.TryGetValue(name, out methodInfo);
         }
     }
 }

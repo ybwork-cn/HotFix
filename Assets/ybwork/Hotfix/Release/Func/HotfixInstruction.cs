@@ -8,6 +8,7 @@
         Float,
         String,
         Method,
+        Variable,
         Type,
         Instruction,
     }
@@ -16,16 +17,16 @@
     {
         public HotfixOpCode Code;
         public OperandType OperandType;
-        public string CodeString => Code.ToString();
+        public string CodeString;
         public object Operand;
         public int NextOffset;
 
         public override string ToString()
         {
             if (Operand == null)
-                return CodeString;
+                return Code.ToString();
             else
-                return CodeString + " " + Operand;
+                return Code + " " + Operand;
         }
     }
 }

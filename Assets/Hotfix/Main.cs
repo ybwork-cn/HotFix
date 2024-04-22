@@ -1,6 +1,7 @@
 ﻿using Hotfix;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using UnityEngine;
 
@@ -17,15 +18,15 @@ public class Main : MonoBehaviour
     [MethodImpl(MethodImplOptions.NoInlining)]
     public int Add(IEnumerable<int> arr)
     {
-        int result = 0;
-        foreach (var item in arr)
-        {
-            if ((item >> 1) == 3)
-                continue;
-            result += item;
-            if ((item << 1) == 4)
-                break;
-        }
+        int result = arr.Sum();
+        Log(result + "---");
         return result;
+    }
+
+    [Hotfix]
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private void Log(string msg)
+    {
+        Debug.Log(msg);
     }
 }
