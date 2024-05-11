@@ -1,4 +1,5 @@
 ﻿using Hotfix;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,6 +12,7 @@ public class Main : MonoBehaviour
     {
         yield return HotfixRunner.InitAsync();
         Debug.Log("初始化完成");
+
         Debug.Log("返回值:" + Add(new List<int> { 3, 4, 5, 6 }));
     }
 
@@ -19,14 +21,18 @@ public class Main : MonoBehaviour
     public int Add(IEnumerable<int> arr)
     {
         int result = arr.Sum();
-        Log(result + "---");
+        Action<string> action = Debug.Log;
+        action += Debug.Log;
+        action += Debug.Log;
+        action -= Debug.Log;
+        Log(action, result + "---");
         return result;
     }
 
     [Hotfix]
     [MethodImpl(MethodImplOptions.NoInlining)]
-    private void Log(string msg)
+    private void Log(Action<string> action, string msg)
     {
-        Debug.Log(msg);
+        action?.Invoke(msg);
     }
 }

@@ -45,6 +45,7 @@ namespace Hotfix.Editor
             File.WriteAllText(Path.Combine(HotfixRunner.RootPath, "catalogue.json"), catalogueContent);
 
             Debug.Log("Generate Hotfix IL Succeed: " + HotfixRunner.RootPath);
+            //System.Diagnostics.Process.Start(HotfixRunner.RootPath);
         }
 
         [MenuItem("Tools/IL Injection", priority = 3)]

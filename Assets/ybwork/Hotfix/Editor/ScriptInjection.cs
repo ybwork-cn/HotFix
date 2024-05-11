@@ -113,6 +113,11 @@ namespace Hotfix.Editor
                             result.OperandType = OperandType.Variable;
                             result.Operand = variableDefinition.Index;
                         }
+                        else if (operand is FieldDefinition fieldDefinition)
+                        {
+                            result.OperandType = OperandType.Variable;
+                            result.Operand = fieldDefinition.FullName;
+                        }
                         else if (operand is Instruction targetInstruction)
                         {
                             result.OperandType = OperandType.Instruction;
