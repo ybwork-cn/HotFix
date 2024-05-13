@@ -27,7 +27,7 @@ namespace Hotfix
             if (Types.TryGetValue(name, out Type type))
                 return type;
 
-            if (name.Contains('<'))
+            if (name.Contains('<') && !name.Contains("<>"))
                 return GetGenericType(name);
 
             StackTrace stackTrace = new();

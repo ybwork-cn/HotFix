@@ -1,10 +1,12 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using UnityEngine;
+using static Unity.IO.LowLevel.Unsafe.AsyncReadManagerMetrics;
 using static UnityEditor.Progress;
 
 namespace Hotfix
@@ -53,6 +55,9 @@ namespace Hotfix
 
         private int InvokeOneCode(IReadOnlyList<object> paras, object[] vars, Stack stack, HotfixInstruction instruction)
         {
+            const BindingFlags bindingFlags =
+                BindingFlags.Public | BindingFlags.NonPublic |
+                BindingFlags.Instance | BindingFlags.Static; ;
             switch (instruction.Code)
             {
                 case HotfixOpCode.Nop:
@@ -144,6 +149,9 @@ namespace Hotfix
                         stack.Push(result);
                         return instruction.NextOffset;
                     }
+                case HotfixOpCode.Pop:
+                    stack.Pop();
+                    return instruction.NextOffset;
                 case HotfixOpCode.Call:
                     {
                         string methodFullName = (string)instruction.Operand;
@@ -422,9 +430,47 @@ namespace Hotfix
                         Match match = regex.Match(fieldFullName);
                         Type type = TypeManager.GetType(match.Groups[2].Value);
                         string fieldName = match.Groups[3].Value;
-                        FieldInfo fieldInfo = type.GetFields().First(field => field.Name == fieldName);
+                        FieldInfo fieldInfo = type.GetField(fieldName, bindingFlags);
                         object value = fieldInfo.GetValue(stack.Pop());
                         stack.Push(value);
+                        return instruction.NextOffset;
+                    }
+                case HotfixOpCode.Ldflda:
+                    goto case HotfixOpCode.Ldfld;
+                case HotfixOpCode.Stfld:
+                    {
+                        string fieldFullName = (string)instruction.Operand;
+                        Regex regex = new Regex("^(\\S*) (\\S*)::(\\S*)$");
+                        Match match = regex.Match(fieldFullName);
+                        Type type = TypeManager.GetType(match.Groups[2].Value);
+                        string fieldName = match.Groups[3].Value;
+                        FieldInfo fieldInfo = type.GetField(fieldName, bindingFlags);
+                        object value = stack.Pop();
+                        object obj = stack.Pop();
+                        fieldInfo.SetValue(obj, value);
+                        return instruction.NextOffset;
+                    }
+                case HotfixOpCode.Ldsfld:
+                    {
+                        string fieldFullName = (string)instruction.Operand;
+                        Regex regex = new Regex("^(\\S*) (\\S*)::(\\S*)$");
+                        Match match = regex.Match(fieldFullName);
+                        Type type = TypeManager.GetType(match.Groups[2].Value);
+                        string fieldName = match.Groups[3].Value;
+                        FieldInfo fieldInfo = type.GetField(fieldName, bindingFlags);
+                        object value = fieldInfo.GetValue(null);
+                        stack.Push(value);
+                        return instruction.NextOffset;
+                    }
+                case HotfixOpCode.Stsfld:
+                    {
+                        string fieldFullName = (string)instruction.Operand;
+                        Regex regex = new Regex("^(\\S*) (\\S*)::(\\S*)$");
+                        Match match = regex.Match(fieldFullName);
+                        Type type = TypeManager.GetType(match.Groups[2].Value);
+                        string fieldName = match.Groups[3].Value;
+                        FieldInfo fieldInfo = type.GetField(fieldName, bindingFlags);
+                        fieldInfo.SetValue(null, stack.Pop());
                         return instruction.NextOffset;
                     }
                 case HotfixOpCode.Box:
@@ -460,7 +506,7 @@ namespace Hotfix
                             .Where(name => !string.IsNullOrEmpty(name))
                             .Select(name => TypeManager.GetType(name))
                             .ToArray();
-                        MethodInfo method = type.GetMethod(methodName, paraTypes);
+                        MethodInfo method = type.GetMethod(methodName, bindingFlags, null, paraTypes, null);
                         stack.Push(method.MethodHandle.GetFunctionPointer());
                         return instruction.NextOffset;
                     }

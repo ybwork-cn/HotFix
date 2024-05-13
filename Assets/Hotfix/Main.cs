@@ -21,10 +21,7 @@ public class Main : MonoBehaviour
     public int Add(IEnumerable<int> arr)
     {
         int result = arr.Sum();
-        Action<string> action = Debug.Log;
-        action += Debug.Log;
-        action += Debug.Log;
-        action -= Debug.Log;
+        Action<string> action = (str) => Debug.Log(str);
         Log(action, result + "---");
         return result;
     }
