@@ -4,7 +4,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
-using System.Xml.Linq;
 using UnityEngine;
 using UnityEngine.Networking;
 using Debug = UnityEngine.Debug;
@@ -14,7 +13,7 @@ namespace Hotfix
     public static class HotfixRunner
     {
         public static string RootPath => Application.persistentDataPath + "/hotfix";
-        public static readonly Dictionary<string, HotfixMethodInfo> catalogue = new();
+        private static readonly Dictionary<string, HotfixMethodInfo> _catalogue = new();
 
         public static IEnumerator InitAsync()
         {
@@ -28,13 +27,13 @@ namespace Hotfix
                 yield return request.SendWebRequest();
                 string content = request.downloadHandler.text;
                 HotfixMethodInfo method = JsonConvert.DeserializeObject<HotfixMethodInfo>(content);
-                catalogue.Add(methodName, method);
+                _catalogue.Add(methodName, method);
             }
         }
 
         public static HotfixFunc Create(string name)
         {
-            return new HotfixFunc(catalogue[name]);
+            return new HotfixFunc(_catalogue[name]);
         }
 
         public static T Run<T>(StackTrace stackTrace, object obj, params object[] paras)
@@ -83,7 +82,7 @@ namespace Hotfix
         public static bool IsHotfixMethod(Type type, string methodName, out HotfixMethodInfo methodInfo)
         {
             string name = type.FullName + "." + methodName;
-            return catalogue.TryGetValue(name, out methodInfo);
+            return _catalogue.TryGetValue(name, out methodInfo);
         }
     }
 }

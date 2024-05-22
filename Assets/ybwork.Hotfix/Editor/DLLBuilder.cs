@@ -10,7 +10,7 @@ namespace Hotfix.Editor
 {
     internal static class DLLBuilder
     {
-        private const string _dllName = "Library/ScriptAssemblies/Hotfix.dll";
+        private const string DLL_NAME = "Library/ScriptAssemblies/Hotfix.dll";
 
         [MenuItem("Tools/Switch to Release Mode", priority = 0)]
         public static void SwitchToReleaseMode()
@@ -32,7 +32,7 @@ namespace Hotfix.Editor
             Directory.CreateDirectory(HotfixRunner.RootPath);
 
             List<string> methodNames = new List<string>();
-            IEnumerable<HotfixMethodInfo> methods = ScriptInjection.GenerateHotfixIL(_dllName);
+            IEnumerable<HotfixMethodInfo> methods = ScriptInjection.GenerateHotfixIL(DLL_NAME);
             foreach (HotfixMethodInfo method in methods)
             {
                 string content = JsonConvert.SerializeObject(method, Formatting.Indented);

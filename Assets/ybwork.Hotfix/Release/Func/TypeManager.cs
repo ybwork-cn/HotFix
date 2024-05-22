@@ -10,21 +10,21 @@ namespace Hotfix
 {
     internal static class TypeManager
     {
-        private static readonly List<Assembly> Assemblies = new();
-        private static readonly Dictionary<string, Type> Types = new();
+        private static readonly List<Assembly> _assemblies = new();
+        private static readonly Dictionary<string, Type> _types = new();
 
         static TypeManager()
         {
-            Assemblies.Add(typeof(object).Assembly);
-            Assemblies.Add(typeof(System.Linq.Enumerable).Assembly);
-            Assemblies.Add(typeof(List<>).Assembly);
-            Assemblies.Add(typeof(TypeManager).Assembly);
-            Assemblies.Add(typeof(MonoBehaviour).Assembly);
+            _assemblies.Add(typeof(object).Assembly);
+            _assemblies.Add(typeof(System.Linq.Enumerable).Assembly);
+            _assemblies.Add(typeof(List<>).Assembly);
+            _assemblies.Add(typeof(TypeManager).Assembly);
+            _assemblies.Add(typeof(MonoBehaviour).Assembly);
         }
 
         public static Type GetType(string name)
         {
-            if (Types.TryGetValue(name, out Type type))
+            if (_types.TryGetValue(name, out Type type))
                 return type;
 
             if (name.Contains('<') && !name.Contains("<>"))
@@ -34,11 +34,11 @@ namespace Hotfix
             foreach (StackFrame frame in stackTrace.GetFrames())
             {
                 Assembly entryAssembly = frame.GetMethod().DeclaringType.Assembly;
-                if (!Assemblies.Contains(entryAssembly))
-                    Assemblies.Add(entryAssembly);
+                if (!_assemblies.Contains(entryAssembly))
+                    _assemblies.Add(entryAssembly);
             }
 
-            foreach (var assembly in Assemblies)
+            foreach (var assembly in _assemblies)
             {
                 var types = assembly.GetTypes();
                 type = assembly.GetType(name);
