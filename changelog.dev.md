@@ -25,12 +25,15 @@
 
 #### 注
 - 支持异步方法
+- 支持迭代器方法
 - `HotfixOpCode.Ldftn`指令支持加载普通方法或热更方法
   - 该指令为将一个函数签名转换为对应的委托实例（也即获取该函数的指针）
 - 一个函数只要标记了Hotfix，则将其中的所有表达式转码为热更IL码(一个独立的Function)，不关心该表达式是否发生了变化
-- `?` 方法支持异步、协程
+- 发布大的版本时，记录该版本dll所有的类型的成员签名及函数字节码的Hash
+  - 每次发布热更时，如果有成员签名发生了变动，则整个类型热更
+  - 如果所有成员签名都没发生变动，只有函数字节码的Hash不匹配，则只热更该函数
+  - 删除Hotfix标记，改为自动识别
 - 位运算应支持所有整数类型，参考https://learn.microsoft.com/zh-cn/dotnet/api/system.reflection.emit.opcodes.shr?view=net-8.0&viewFallbackFrom=net-4.8
-- 支持sizeof
 - 增加对更多IL指令的支持
 - 支持现有类型的热更
   - 允许增删方法
@@ -47,4 +50,3 @@
       - `HotfixProperty`需要存储该属性的已被修改的访问符，以及该访问符所绑定的方法
 - 支持新类型的创建
 - class和struct实现方式不同
-- `HotfixAttribute`自动实现`MethodImpl(MethodImplOptions.NoInlining)`
