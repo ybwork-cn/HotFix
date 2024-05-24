@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using UnityEngine;
+using ybwork.Async;
 
 namespace Hotfix
 {
@@ -20,6 +21,7 @@ namespace Hotfix
             _assemblies.Add(typeof(List<>).Assembly);
             _assemblies.Add(typeof(TypeManager).Assembly);
             _assemblies.Add(typeof(MonoBehaviour).Assembly);
+            _assemblies.Add(typeof(YueTask).Assembly);
         }
 
         public static Type GetType(string name)
@@ -27,7 +29,7 @@ namespace Hotfix
             if (_types.TryGetValue(name, out Type type))
                 return type;
 
-            if (name.Contains('<') && !name.Contains("<>"))
+            if (name.Contains('<') && !name.Contains("/<") && !name.Contains("<>"))
                 return GetGenericType(name);
 
             StackTrace stackTrace = new();
@@ -45,9 +47,42 @@ namespace Hotfix
                 if (type != null)
                     break;
             }
-            if (type == null)
-                throw new Exception(name);
+
+            _types[name] = type ?? throw new Exception(name);
             return type;
+        }
+
+        public static Type[] GetGenericParamTypes(string name)
+        {
+            if (!name.Contains("<"))
+                return Array.Empty<Type>();
+
+            while (!name.StartsWith("<"))
+                name = name[1..];
+            name = name[1..^1];
+
+            Type[] paramTypes = name.Split(',')
+                .Select(paramTypeName => GetType(paramTypeName))
+                .ToArray();
+            return paramTypes;
+        }
+
+        public static string GetString(Type type)
+        {
+            string name = type.Name;
+            if (!string.IsNullOrEmpty(type.Namespace))
+                name = type.Namespace + "." + name;
+
+            if (!type.IsGenericType)
+                return name;
+
+            string genericArgumentsString = GetString(type.GetGenericArguments());
+            return name + "<" + genericArgumentsString + ">";
+        }
+
+        public static string GetString(IEnumerable<Type> types)
+        {
+            return string.Join(",", types.Select(p => GetString(p)));
         }
 
         private static Type GetGenericType(string name)
@@ -60,6 +95,7 @@ namespace Hotfix
                 .ToArray();
             Type type = GetType(typeName);
             type = type.MakeGenericType(paramTypes);
+            _types[name] = type ?? throw new Exception(name);
             return type;
         }
     }

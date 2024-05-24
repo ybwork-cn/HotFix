@@ -1,10 +1,9 @@
 ﻿using Hotfix;
-using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using UnityEngine;
+using ybwork.Async;
 
 public class Main : MonoBehaviour
 {
@@ -12,24 +11,21 @@ public class Main : MonoBehaviour
     {
         yield return HotfixRunner.InitAsync();
         Debug.Log("初始化完成");
-
-        Debug.Log("返回值:" + Add(new List<int> { 3, 4, 5, 6 }));
+        Add(new List<int> { 3, 4, 5, 6 });
     }
 
-    [Hotfix]
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    public int Add(IEnumerable<int> arr)
+    public async void Add(IEnumerable<int> arr)
     {
         int result = arr.Sum();
-        Action<string> action = (str) => Debug.Log(str);
-        Log(action, result + "---");
-        return result;
+        var x = await Delay(300);
+        Debug.Log(x + ":" + result);
+
     }
 
-    [Hotfix]
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    private void Log(Action<string> action, string msg)
+    public async YueTask<int> Delay(int ms)
     {
-        action?.Invoke(msg);
+        await YueTask.Delay(0.6f);
+        Debug.Log(ms);
+        return ms;
     }
 }

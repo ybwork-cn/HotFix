@@ -10,34 +10,90 @@ namespace Hotfix
 {
     public class HotfixFunc
     {
-        internal readonly HotfixMethodInfo MethodInfo;
+        internal enum MethodType
+        {
+            Base,
+            Hotfix,
+        }
+
+        internal readonly MethodType Type;
+        internal readonly HotfixMethodInfo HotfixMethodInfo;
+        internal readonly MethodInfo MethodInfo;
+
+        internal readonly Type[] Parameters;
+        internal int ParametersCount => Parameters.Length;
+        internal readonly bool IsStatic;
+        internal readonly Type ReturnType;
 
         internal HotfixFunc(HotfixMethodInfo methodInfo)
         {
+            Type = MethodType.Hotfix;
+            HotfixMethodInfo = methodInfo;
+            Parameters = HotfixMethodInfo.Parameters.Select(p => TypeManager.GetType(p)).ToArray();
+            IsStatic = methodInfo.IsStatic;
+            ReturnType = TypeManager.GetType(methodInfo.ReturnType);
+        }
+
+        internal HotfixFunc(MethodInfo methodInfo)
+        {
+            Type = MethodType.Base;
             MethodInfo = methodInfo;
+            Parameters = methodInfo.GetParameters().Select(p => p.ParameterType).ToArray();
+            IsStatic = methodInfo.IsStatic;
+            ReturnType = methodInfo.ReturnType;
         }
 
         public object Invoke(object obj, params object[] paras)
         {
-            List<object> values = new List<object>(paras.Length + 1);
-            values.Add(obj);
-            values.AddRange(paras);
-            return InvokeInternel(values);
+            if (Type == MethodType.Base)
+            {
+                return MethodInfo.Invoke(obj, paras);
+            }
+            else
+            {
+                Debug.Log("执行热更逻辑:" + HotfixMethodInfo.Name);
+                List<object> values = new List<object>(paras.Length + 1);
+                values.Add(obj);
+                values.AddRange(paras);
+                return InvokeInternel(values);
+            }
+        }
+
+        public void InvokeVoid(object obj, params object[] paras)
+        {
+            if (Type == MethodType.Base)
+            {
+                MethodInfo.Invoke(obj, paras);
+            }
+            else
+            {
+                Debug.Log("执行热更逻辑:" + HotfixMethodInfo.Name);
+                List<object> values = new List<object>(paras.Length + 1);
+                values.Add(obj);
+                values.AddRange(paras);
+                InvokeInternel(values);
+            }
         }
 
         private object InvokeInternel(IReadOnlyList<object> paras)
         {
-            object[] vars = new object[MethodInfo.Body.Variables.Length];
+            object[] vars = new object[HotfixMethodInfo.Body.Variables.Length];
+            for (int i = 0; i < HotfixMethodInfo.Body.Variables.Length; i++)
+            {
+                Type type = TypeManager.GetType(HotfixMethodInfo.Body.Variables[i]);
+                vars[i] = type.IsValueType ? Activator.CreateInstance(type) : null;
+            }
+
             Stack stack = new Stack();
             int instructionIndex = 0;
             while (true)
             {
-                HotfixInstruction instruction = MethodInfo.Body.Instructions[instructionIndex];
+                HotfixInstruction instruction = HotfixMethodInfo.Body.Instructions[instructionIndex];
 
                 if (instruction.Code == HotfixOpCode.Ret)
                 {
                     object result;
-                    if (MethodInfo.ReturnType == typeof(void).ToString())
+                    if (HotfixMethodInfo.ReturnType == typeof(void).ToString())
                         result = null;
                     else
                         result = stack.Pop();
@@ -54,7 +110,7 @@ namespace Hotfix
         {
             const BindingFlags bindingFlags =
                 BindingFlags.Public | BindingFlags.NonPublic |
-                BindingFlags.Instance | BindingFlags.Static; ;
+                BindingFlags.Instance | BindingFlags.Static;
             switch (instruction.Code)
             {
                 case HotfixOpCode.Nop:
@@ -107,6 +163,9 @@ namespace Hotfix
                 case HotfixOpCode.Ldnull:
                     stack.Push(null);
                     return instruction.NextOffset;
+                case HotfixOpCode.Ldc_I4_M1:
+                    stack.Push(-1);
+                    return instruction.NextOffset;
                 case HotfixOpCode.Ldc_I4_0:
                     stack.Push(0);
                     return instruction.NextOffset;
@@ -152,66 +211,26 @@ namespace Hotfix
                 case HotfixOpCode.Call:
                     {
                         string methodFullName = (string)instruction.Operand;
-                        Regex regex = new Regex("^(\\S*) (\\S*)::(\\S*)\\((\\S*)\\)$");
-                        Match match = regex.Match(methodFullName);
-                        Type type = TypeManager.GetType(match.Groups[2].Value);
-                        string methodName = match.Groups[3].Value;
-                        Type[] paraTypes = match.Groups[4].Value
-                            .Split(',')
-                            .Where(name => !string.IsNullOrEmpty(name))
-                            .Select(name =>
-                            {
-                                if (!name.StartsWith('!'))
-                                    return TypeManager.GetType(name);
-                                else
-                                {
-                                    int genericTypeIndex = int.Parse(name[1..]);
-                                    return type.GenericTypeArguments[genericTypeIndex];
-                                }
-                            })
-                            .ToArray();
-                        object[] paraValues = new object[paraTypes.Length];
-                        for (int i = 0; i < paraTypes.Length; i++)
+                        HotfixFunc method = HotfixRunner.Create(methodFullName.Split(' ')[1]);
+
+                        object[] paraValues = new object[method.ParametersCount];
+                        ParameterModifier[] paramMods = new ParameterModifier[1];
+                        for (int i = 0; i < method.ParametersCount; i++)
                         {
-                            paraValues[paraTypes.Length - 1 - i] = stack.Pop();
+                            object v = stack.Pop();
+                            paraValues[method.ParametersCount - 1 - i] = v;
                         }
 
-                        if (HotfixRunner.IsHotfixMethod(type, methodName, out HotfixMethodInfo methodInfo))
-                        {
-                            object obj = null;
-                            if (!methodInfo.IsStatic)
-                                obj = stack.Pop();
-                            if (methodInfo.ReturnType == typeof(void).FullName)
-                                HotfixRunner.RunVoid(methodInfo, obj, paraValues);
-                            else
-                            {
-                                object result = HotfixRunner.Run(methodInfo, obj, paraValues);
-                                stack.Push(result);
-                            }
-                        }
+                        object obj = null;
+                        if (!method.IsStatic)
+                            obj = stack.Pop();
+
+                        if (method.ReturnType == typeof(void))
+                            method.InvokeVoid(obj, paraValues);
                         else
                         {
-                            if (type == typeof(Debug) && methodName == "Log")
-                            {
-                                if (paraTypes.Length == 1)
-                                    Debug.Log(paraValues[0]);
-                                else if (paraTypes.Length == 2)
-                                    Debug.Log(paraValues[0], (UnityEngine.Object)paraValues[1]);
-                            }
-                            else
-                            {
-                                MethodInfo method = type.GetMethod(methodName, paraTypes);
-                                object obj = null;
-                                if (!method.IsStatic)
-                                    obj = stack.Pop();
-                                if (method.ReturnType == typeof(void))
-                                    method.Invoke(obj, paraValues);
-                                else
-                                {
-                                    object result = method.Invoke(obj, paraValues);
-                                    stack.Push(result);
-                                }
-                            }
+                            object result = method.Invoke(obj, paraValues);
+                            stack.Push(result);
                         }
 
                         return instruction.NextOffset;
@@ -509,14 +528,6 @@ namespace Hotfix
                     }
                 default: throw new Exception("未识别的IL指令:" + instruction.Code.ToString());
             }
-        }
-
-        public void InvokeVoid(object obj, params object[] paras)
-        {
-            List<object> values = new List<object>(paras.Length + 1);
-            values.Add(obj);
-            values.AddRange(paras);
-            InvokeInternel(values);
         }
     }
 }

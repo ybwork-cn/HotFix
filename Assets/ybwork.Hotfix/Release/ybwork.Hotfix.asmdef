@@ -1,7 +1,9 @@
 {
     "name": "ybwork.Hotfix",
     "rootNamespace": "",
-    "references": [],
+    "references": [
+        "GUID:6825eb11f7404ad4f875418f236903b0"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,

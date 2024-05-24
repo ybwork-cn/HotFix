@@ -1,5 +1,9 @@
 ﻿using Hotfix.Editor;
+using System;
+using System.IO;
+using UnityEditor;
 using UnityEditor.Build;
+using UnityEditor.Build.Player;
 using UnityEditor.Build.Reporting;
 using UnityEditor.Callbacks;
 using UnityEngine;
@@ -41,7 +45,8 @@ namespace HotFix
             Debug.Log("处理Dll");
 
             // 代码注入
-            string dllPath = @"Temp/StagingArea/Data/Managed/Hotfix.dll";
+            string dllPath = "Temp/StagingArea/Data/Managed/Hotfix.dll";
+
             ScriptInjection.ILInjection(dllPath);
         }
     }
