@@ -53,13 +53,11 @@ namespace Hotfix.Editor
                         {
                             foreach (MethodDefinition methedDef in typeDef.Methods)
                             {
-                                Regex regex = new Regex("^(\\S+)/<(\\S+)>");
-                                Match match = regex.Match(methedDef.DeclaringType.FullName);
-                                var basMethod = assembly.MainModule.GetTypes()
-                                    .First(type => type.FullName == match.Groups[1].Value)
-                                    .Methods
-                                    .First(method => method.Name == match.Groups[2].Value);
-                                methods[basMethod.FullName] = basMethod;
+                                //Regex regex = new Regex("^(\\S+)/<(\\S+)>");
+                                //Match match = regex.Match(methedDef.DeclaringType.FullName);
+                                //Debug.Log(regex);
+                                //Debug.Log(methedDef.DeclaringType.FullName);
+                                //Debug.Log(match);
                                 methods[methedDef.FullName] = methedDef;
                             }
                         }

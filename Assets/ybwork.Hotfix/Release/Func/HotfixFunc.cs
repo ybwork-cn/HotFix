@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -158,8 +159,11 @@ namespace Hotfix
                         return instruction.NextOffset;
                     }
                 case HotfixOpCode.Ldloca_S:
-                    stack.Push(vars[0]);
-                    return instruction.NextOffset;
+                    {
+                        int index = Convert.ToInt32(instruction.Operand);
+                        stack.Push(vars[index]);
+                        return instruction.NextOffset;
+                    }
                 case HotfixOpCode.Ldnull:
                     stack.Push(null);
                     return instruction.NextOffset;
@@ -414,11 +418,15 @@ namespace Hotfix
                         Regex regex = new Regex("^(\\S*) (\\S*)::(\\S*)\\((\\S*)\\)$");
                         Match match = regex.Match(methodFullName);
                         Type type = TypeManager.GetType(match.Groups[2].Value);
-                        Type[] paraTypes = match.Groups[4].Value
-                            .Split(',')
-                            .Where(name => !string.IsNullOrEmpty(name))
-                            .Select(name => TypeManager.GetType(name))
-                            .ToArray();
+
+                        // 如果是创建某个委托的实例，则跳过
+                        // 因为上一步的HotfixOpCode.Ldftn已经创建出了最终的委托
+                        if (typeof(Delegate).IsAssignableFrom(type))
+                        {
+                            return instruction.NextOffset;
+                        }
+
+                        Type[] paraTypes = TypeManager.GetGenericParamTypes($"<{match.Groups[4].Value}>");
                         object[] paraValues = new object[paraTypes.Length];
                         for (int i = 0; i < paraTypes.Length; i++)
                         {
@@ -508,6 +516,15 @@ namespace Hotfix
                         stack.Push(item);
                         return instruction.NextOffset;
                     }
+                case HotfixOpCode.Ldelem_Ref:
+                    goto case HotfixOpCode.Ldelem_I4;
+                case HotfixOpCode.Ldtoken:
+                    {
+                        string typeName = (string)instruction.Operand;
+                        RuntimeTypeHandle type = TypeManager.GetType(typeName).TypeHandle;
+                        stack.Push(type);
+                        return instruction.NextOffset;
+                    }
                 case HotfixOpCode.Leave_S:
                     return Convert.ToInt32(instruction.Operand);
                 case HotfixOpCode.Ldftn:
@@ -523,11 +540,76 @@ namespace Hotfix
                             .Select(name => TypeManager.GetType(name))
                             .ToArray();
                         MethodInfo method = type.GetMethod(methodName, bindingFlags, null, paraTypes, null);
-                        stack.Push(method.MethodHandle.GetFunctionPointer());
+                        object target = method.IsStatic ? null : stack.Pop();
+                        var func = CreateDelegate(method, target);
+                        stack.Push(func);
                         return instruction.NextOffset;
                     }
                 default: throw new Exception("未识别的IL指令:" + instruction.Code.ToString());
             }
+        }
+
+        private Delegate CreateDelegate(MethodInfo method, object target)
+        {
+            Type delegateType;
+            if (method.ReturnType == typeof(void))
+            {
+                delegateType = method.GetParameters().Length switch
+                {
+                    0 => typeof(Action),
+                    1 => typeof(Action<>),
+                    2 => typeof(Action<,>),
+                    3 => typeof(Action<,,>),
+                    4 => typeof(Action<,,,>),
+                    5 => typeof(Action<,,,,>),
+                    6 => typeof(Action<,,,,,>),
+                    7 => typeof(Action<,,,,,,>),
+                    8 => typeof(Action<,,,,,,,>),
+                    9 => typeof(Action<,,,,,,,,>),
+                    10 => typeof(Action<,,,,,,,,,>),
+                    11 => typeof(Action<,,,,,,,,,,>),
+                    12 => typeof(Action<,,,,,,,,,,,>),
+                    13 => typeof(Action<,,,,,,,,,,,,>),
+                    14 => typeof(Action<,,,,,,,,,,,,,>),
+                    15 => typeof(Action<,,,,,,,,,,,,,,>),
+                    16 => typeof(Action<,,,,,,,,,,,,,,,>),
+                    _ => throw new NotImplementedException(),
+                };
+                var paramTypes = method.GetParameters()
+                    .Select(p => p.ParameterType)
+                    .ToArray();
+                delegateType = delegateType.MakeGenericType(paramTypes);
+            }
+            else
+            {
+                delegateType = method.GetParameters().Length switch
+                {
+                    0 => typeof(Func<>),
+                    1 => typeof(Func<,>),
+                    2 => typeof(Func<,,>),
+                    3 => typeof(Func<,,,>),
+                    4 => typeof(Func<,,,,>),
+                    5 => typeof(Func<,,,,,>),
+                    6 => typeof(Func<,,,,,,>),
+                    7 => typeof(Func<,,,,,,,>),
+                    8 => typeof(Func<,,,,,,,,>),
+                    9 => typeof(Func<,,,,,,,,,>),
+                    10 => typeof(Func<,,,,,,,,,,>),
+                    11 => typeof(Func<,,,,,,,,,,,>),
+                    12 => typeof(Func<,,,,,,,,,,,,>),
+                    13 => typeof(Func<,,,,,,,,,,,,,>),
+                    14 => typeof(Func<,,,,,,,,,,,,,,>),
+                    15 => typeof(Func<,,,,,,,,,,,,,,,>),
+                    16 => typeof(Func<,,,,,,,,,,,,,,,,>),
+                    _ => throw new NotImplementedException(),
+                };
+                var paramTypes = method.GetParameters()
+                    .Select(p => p.ParameterType)
+                    .Append(method.ReturnType)
+                    .ToArray();
+                delegateType = delegateType.MakeGenericType(paramTypes);
+            }
+            return method.CreateDelegate(delegateType, target);
         }
     }
 }

@@ -1,4 +1,5 @@
 ﻿using Hotfix;
+using Newtonsoft.Json;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,15 +12,21 @@ public class Main : MonoBehaviour
     {
         yield return HotfixRunner.InitAsync();
         Debug.Log("初始化完成");
-        Add(new List<int> { 3, 4, 5, 6 });
+        new Test().Add(new List<int> { 3, 4, 5, 6 });
     }
+}
 
-    public async void Add(IEnumerable<int> arr)
+public class Test
+{
+    public void Add(IEnumerable<int> arr)
     {
-        int result = arr.Sum();
-        var x = await Delay(300);
-        Debug.Log(x + ":" + result);
+        var names = typeof(Main).Assembly.GetTypes().Select(type => type.FullName);
+        Debug.Log(JsonConvert.SerializeObject(names, Formatting.Indented));
 
+        int result = arr.Sum();
+        Debug.Log(1 + ":" + result);
+
+        Delay(100).Then(v => Debug.Log(v));
     }
 
     public async YueTask<int> Delay(int ms)

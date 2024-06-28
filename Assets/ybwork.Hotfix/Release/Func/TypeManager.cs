@@ -22,10 +22,12 @@ namespace Hotfix
             _assemblies.Add(typeof(TypeManager).Assembly);
             _assemblies.Add(typeof(MonoBehaviour).Assembly);
             _assemblies.Add(typeof(YueTask).Assembly);
+            _assemblies.Add(typeof(Newtonsoft.Json.JsonConvert).Assembly);
         }
 
         public static Type GetType(string name)
         {
+            name = name.Replace("/", "+");
             if (_types.TryGetValue(name, out Type type))
                 return type;
 
@@ -61,10 +63,25 @@ namespace Hotfix
                 name = name[1..];
             name = name[1..^1];
 
-            Type[] paramTypes = name.Split(',')
-                .Select(paramTypeName => GetType(paramTypeName))
-                .ToArray();
-            return paramTypes;
+            List<Type> types = new List<Type>();
+            int start = 0;
+            int rest_arrow = 0;
+            for (int i = 0; i < name.Length; i++)
+            {
+                if (name[i] == '<')
+                    rest_arrow++;
+                else if (name[i] == '>')
+                    rest_arrow--;
+                else if (rest_arrow == 0 && name[i] == ',')
+                {
+                    types.Add(GetType(name[start..i]));
+                    start = i + 1;
+                    i++;
+                }
+            }
+            if (start != name.Length)
+                types.Add(GetType(name[start..]));
+            return types.ToArray();
         }
 
         public static string GetString(Type type)
@@ -89,11 +106,8 @@ namespace Hotfix
         {
             Regex regex = new Regex("^(\\S+`\\d+)<(\\S+)>$");
             Match match = regex.Match(name);
-            string typeName = match.Groups[1].Value;
-            Type[] paramTypes = match.Groups[2].Value.Split(',')
-                .Select(paramTypeName => GetType(paramTypeName))
-                .ToArray();
-            Type type = GetType(typeName);
+            Type[] paramTypes = GetGenericParamTypes($"<{match.Groups[2].Value}>");
+            Type type = GetType(match.Groups[1].Value);
             type = type.MakeGenericType(paramTypes);
             _types[name] = type ?? throw new Exception(name);
             return type;
