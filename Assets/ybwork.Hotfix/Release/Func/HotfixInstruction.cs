@@ -11,6 +11,7 @@
         Variable,
         Type,
         Instruction,
+        Instructions,
     }
 
     public class HotfixInstruction

@@ -164,6 +164,12 @@ namespace Hotfix
                         stack.Push(vars[index]);
                         return instruction.NextOffset;
                     }
+                case HotfixOpCode.Stloc_S:
+                    {
+                        int index = Convert.ToInt32(instruction.Operand);
+                        vars[index] = stack.Pop();
+                        return instruction.NextOffset;
+                    }
                 case HotfixOpCode.Ldnull:
                     stack.Push(null);
                     return instruction.NextOffset;
@@ -200,7 +206,7 @@ namespace Hotfix
                 case HotfixOpCode.Ldc_I4_S:
                     {
                         sbyte value = Convert.ToSByte(instruction.Operand);
-                        stack.Push(value);
+                        stack.Push((int)value);
                         return instruction.NextOffset;
                     }
                 case HotfixOpCode.Dup:
@@ -327,6 +333,12 @@ namespace Hotfix
                             return Convert.ToInt32(instruction.Operand);
                         else
                             return instruction.NextOffset;
+                    }
+                case HotfixOpCode.Switch:
+                    {
+                        int[] instructionOffsets = JsonConvert.DeserializeObject<int[]>((string)instruction.Operand);
+                        int index = (int)stack.Pop();
+                        return instructionOffsets[index];
                     }
                 case HotfixOpCode.Add:
                     {

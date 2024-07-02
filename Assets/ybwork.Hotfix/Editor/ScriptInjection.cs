@@ -1,5 +1,6 @@
 ﻿using Mono.Cecil;
 using Mono.Cecil.Cil;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -248,6 +249,12 @@ namespace Hotfix.Editor
                         {
                             result.OperandType = OperandType.Float;
                             result.Operand = floatValue;
+                        }
+                        else if (operand is Instruction[] instructions)
+                        {
+                            result.OperandType = OperandType.Instructions;
+                            IEnumerable<int> offsets = instructions.Select(instruction => instruction.Offset);
+                            result.Operand = JsonConvert.SerializeObject(offsets);
                         }
                         else
                         {

@@ -20,12 +20,21 @@ public class Test
 {
     public void Add(IEnumerable<int> arr)
     {
+
         var names = typeof(Main).Assembly.GetTypes().Select(type => type.FullName);
         Debug.Log(JsonConvert.SerializeObject(names, Formatting.Indented));
 
         int result = arr.Sum();
-        Debug.Log(1 + ":" + result);
-
+        int v = result / 3;
+        switch (v)
+        {
+            case 4:
+            case 6:
+            case 8:
+            case 20:
+                Debug.Log(v + ":" + result);
+                break;
+        }
         Delay(100).Then(v => Debug.Log(v));
     }
 
