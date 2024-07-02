@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Text.RegularExpressions;
 using Debug = UnityEngine.Debug;
 
 namespace Hotfix.Editor
@@ -90,6 +89,8 @@ namespace Hotfix.Editor
             fsSourse.CopyTo(ms);
             ms.Position = 0;
 
+            List<string> methods = new List<string>();
+
             AssemblyDefinition assembiy = AssemblyDefinition.ReadAssembly(ms);
 
             /// 遍历程序所有方法，进行代码注入
@@ -101,6 +102,7 @@ namespace Hotfix.Editor
                 {
                     // 代码注入
                     InjectionHotfix(assembiy, methedDef);
+                    methods.Add(methedDef.FullName);
                 }
             }
             assembiy.Write(fsSourse);
@@ -278,7 +280,23 @@ namespace Hotfix.Editor
                 return;
 
             Instruction firstInstruction = processor.Body.Instructions[0];
-            //Instruction lastInstruction = processor.Body.Instructions[^1];
+
+            //bool isIAsyncStateMachine = false;
+            ///// 如果方法所在类型实现了<see cref="System.Runtime.CompilerServices.IAsyncStateMachine"/>
+            ///// 且方法名为MoveNext，则修改注入点为最外层try内部
+            //if (methodDefinition.DeclaringType.HasInterfaces)
+            //{
+            //    var interfaces = methodDefinition.DeclaringType.Interfaces;
+            //    string fullName = typeof(System.Runtime.CompilerServices.IAsyncStateMachine).FullName;
+            //    if (interfaces.Any(interf => interf.InterfaceType.FullName == fullName))
+            //    {
+            //        if (methodDefinition.Name == "MoveNext")
+            //        {
+            //            isIAsyncStateMachine = true;
+            //            firstInstruction = processor.Body.ExceptionHandlers[0].TryStart;
+            //        }
+            //    }
+            //}
 
             MethodReference runMethodReference;
             if (methodDefinition.ReturnType.FullName == typeof(void).FullName)
@@ -359,6 +377,11 @@ namespace Hotfix.Editor
             //return HotfixRunner.Run<int>(new StackTrace(), this, paras)
             processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Call, runMethodReference));
             processor.InsertBefore(firstInstruction, processor.Create(OpCodes.Ret));
+
+            //if (isIAsyncStateMachine)
+            //{
+            //    processor.Body.ExceptionHandlers[0].TryStart = processor.Body.Instructions[3];
+            //}
         }
 
         private static MethodReference MakeGenericMethod(MethodReference runMethodReference, params TypeReference[] types)

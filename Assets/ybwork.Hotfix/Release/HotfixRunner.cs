@@ -6,10 +6,8 @@ using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
-using System.Xml.Linq;
 using UnityEngine;
 using UnityEngine.Networking;
-using Debug = UnityEngine.Debug;
 
 namespace Hotfix
 {
@@ -36,7 +34,7 @@ namespace Hotfix
 
         public static HotfixFunc Create(string methodFullName)
         {
-            if (IsHotfixMethod(methodFullName, out HotfixMethodInfo methodInfo))
+            if (TryGetHotfixMethod(methodFullName, out HotfixMethodInfo methodInfo))
             {
                 return new HotfixFunc(methodInfo);
             }
@@ -126,10 +124,10 @@ namespace Hotfix
             MethodBase method = stackTrace.GetFrame(0).GetMethod();
             string parameters = TypeManager.GetString(method.GetParameters().Select(p => p.ParameterType));
             string methodName = $"{TypeManager.GetString(method.DeclaringType)}::{method.Name}({parameters})";
-            return IsHotfixMethod(methodName, out _);
+            return TryGetHotfixMethod(methodName, out _);
         }
 
-        private static bool IsHotfixMethod(string methodName, out HotfixMethodInfo methodInfo)
+        private static bool TryGetHotfixMethod(string methodName, out HotfixMethodInfo methodInfo)
         {
             return _catalogue.TryGetValue(methodName, out methodInfo);
         }

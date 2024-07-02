@@ -40,26 +40,25 @@
 
 #### 2024.07.02
 - 支持switch语句
+- `HotfixOpCode.Ldftn`指令支持加载普通方法或热更方法
 
 #### 注
+- 函数内匿名方法如果热更，那么所在外层方法也要热更
 - 支持迭代器方法
-- `HotfixOpCode.Ldftn`指令支持加载普通方法或热更方法
-  - 该指令为将一个函数签名转换为对应的委托实例（也即获取该函数的指针）
 - 位运算应支持所有整数类型，参考https://learn.microsoft.com/zh-cn/dotnet/api/system.reflection.emit.opcodes.shr?view=net-8.0&viewFallbackFrom=net-4.8
 - 增加对更多IL指令的支持
 - 支持现有类型的热更
   - 允许增删方法
   - 允许增删字段
   - 允许增删改属性
-  - 热更代码中，如果要代用一个类型的对象的成员(`Call`等指令)，则在线判断是否存在该成员
-    - 如果该成员存在则正常调用
-    - 如果该成员不存在，则用热更的方式调用
+  - 热更代码中，如果要调用一个类型的对象的成员(`Call`等指令)，则在线判断是否存在该成员
+    - 如果该成员标记热更，则用热更的方式调用
+    - 如果该成员未标记热更，则用反射方式调用
   - 类型成员的热更方式
     - 只记录增加和修改的成员，被删除的成员因为不会访问到，所以不需要记录
     - 方法:直接将热更方法通过虚拟机加载并Invoke
     - 字段:每个类型增加一个字段`public Dictionary<string,object> __HotfixFields__;`，用于存储所有的字段
     - 属性:每个类型增加一个字段`public Dictionary<string,HotfixProperty> __HotfixProperties__;`，用于存储所有的字段
       - `HotfixProperty`需要存储该属性的已被修改的访问符，以及该访问符所绑定的方法
-- 支持新类型的创建
 - class和struct实现方式不同
 - 主程序集`Hotfix.dll`引用的其他程序集也参与热更

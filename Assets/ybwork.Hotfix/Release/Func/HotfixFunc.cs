@@ -224,16 +224,13 @@ namespace Hotfix
                         HotfixFunc method = HotfixRunner.Create(methodFullName.Split(' ')[1]);
 
                         object[] paraValues = new object[method.ParametersCount];
-                        ParameterModifier[] paramMods = new ParameterModifier[1];
                         for (int i = 0; i < method.ParametersCount; i++)
                         {
                             object v = stack.Pop();
                             paraValues[method.ParametersCount - 1 - i] = v;
                         }
 
-                        object obj = null;
-                        if (!method.IsStatic)
-                            obj = stack.Pop();
+                        object obj = method.IsStatic ? null : stack.Pop();
 
                         if (method.ReturnType == typeof(void))
                             method.InvokeVoid(obj, paraValues);
@@ -542,18 +539,11 @@ namespace Hotfix
                 case HotfixOpCode.Ldftn:
                     {
                         string methodFullName = (string)instruction.Operand;
-                        Regex regex = new Regex("^(\\S*) (\\S*)::(\\S*)\\((\\S*)\\)$");
-                        Match match = regex.Match(methodFullName);
-                        Type type = TypeManager.GetType(match.Groups[2].Value);
-                        string methodName = match.Groups[3].Value;
-                        Type[] paraTypes = match.Groups[4].Value
-                            .Split(',')
-                            .Where(name => !string.IsNullOrEmpty(name))
-                            .Select(name => TypeManager.GetType(name))
-                            .ToArray();
-                        MethodInfo method = type.GetMethod(methodName, bindingFlags, null, paraTypes, null);
-                        object target = method.IsStatic ? null : stack.Pop();
-                        var func = CreateDelegate(method, target);
+                        HotfixFunc hotfixFunc = HotfixRunner.Create(methodFullName.Split(' ')[1]);
+
+                        object target = hotfixFunc.IsStatic ? null : stack.Pop();
+
+                        Delegate func = hotfixFunc.CreateDelegate(target);
                         stack.Push(func);
                         return instruction.NextOffset;
                     }
@@ -561,12 +551,46 @@ namespace Hotfix
             }
         }
 
-        private Delegate CreateDelegate(MethodInfo method, object target)
+        private Delegate CreateDelegate(object target)
+        {
+            Type delegateType = GetDelegateType();
+            return Type switch
+            {
+                MethodType.Base => MethodInfo.CreateDelegate(delegateType, target),
+                MethodType.Hotfix => CreateHotFixDelegate(target),
+                _ => throw new NotImplementedException(),
+            };
+        }
+
+        private Delegate CreateHotFixDelegate(object target)
+        {
+            Type delegateType = GetDelegateType();
+            if (ReturnType == typeof(void))
+            {
+                DelegateDefines delegateDefines = new DelegateDefines(this, target);
+                MethodInfo method = typeof(DelegateDefines).GetMethod($"A{ParametersCount}");
+                if (method == null)
+                    throw new Exception($"找不到：DelegateDefines.A{ParametersCount}");
+                method = method.MakeGenericMethod(Parameters);
+                return Delegate.CreateDelegate(delegateType, delegateDefines, method);
+            }
+            else
+            {
+                DelegateDefines delegateDefines = new DelegateDefines(this, target);
+                MethodInfo method = typeof(DelegateDefines).GetMethod($"F{Parameters.Length}");
+                if (method == null)
+                    throw new Exception($"找不到：DelegateDefines.F{Parameters.Length}");
+                method = method.MakeGenericMethod(delegateType.GetGenericArguments());
+                return Delegate.CreateDelegate(delegateType, delegateDefines, method);
+            }
+        }
+
+        private Type GetDelegateType()
         {
             Type delegateType;
-            if (method.ReturnType == typeof(void))
+            if (ReturnType == typeof(void))
             {
-                delegateType = method.GetParameters().Length switch
+                delegateType = ParametersCount switch
                 {
                     0 => typeof(Action),
                     1 => typeof(Action<>),
@@ -587,14 +611,11 @@ namespace Hotfix
                     16 => typeof(Action<,,,,,,,,,,,,,,,>),
                     _ => throw new NotImplementedException(),
                 };
-                var paramTypes = method.GetParameters()
-                    .Select(p => p.ParameterType)
-                    .ToArray();
-                delegateType = delegateType.MakeGenericType(paramTypes);
+                delegateType = delegateType.MakeGenericType(Parameters);
             }
             else
             {
-                delegateType = method.GetParameters().Length switch
+                delegateType = ParametersCount switch
                 {
                     0 => typeof(Func<>),
                     1 => typeof(Func<,>),
@@ -615,13 +636,54 @@ namespace Hotfix
                     16 => typeof(Func<,,,,,,,,,,,,,,,,>),
                     _ => throw new NotImplementedException(),
                 };
-                var paramTypes = method.GetParameters()
-                    .Select(p => p.ParameterType)
-                    .Append(method.ReturnType)
+                Type[] paramTypes = Parameters
+                    .Append(ReturnType)
                     .ToArray();
                 delegateType = delegateType.MakeGenericType(paramTypes);
             }
-            return method.CreateDelegate(delegateType, target);
+            return delegateType;
+        }
+    }
+
+    public class DelegateDefines
+    {
+        private readonly HotfixFunc _hotfixFunc;
+        private readonly object _target;
+
+        public DelegateDefines(HotfixFunc hotfixFunc, object target)
+        {
+            _hotfixFunc = hotfixFunc;
+            _target = target;
+        }
+
+        public void A0()
+        {
+            _hotfixFunc.InvokeVoid(_target);
+        }
+
+        public void A1<T1>(T1 v1)
+        {
+            _hotfixFunc.InvokeVoid(_target, v1);
+        }
+
+        public void A2<T1, T2>(T1 v1, T1 v2)
+        {
+            _hotfixFunc.InvokeVoid(_target, v1, v2);
+        }
+
+        public TResult F0<TResult>()
+        {
+            return (TResult)_hotfixFunc.Invoke(_target);
+        }
+
+        public TResult F1<T1, TResult>(T1 v1)
+        {
+            return (TResult)_hotfixFunc.Invoke(_target, v1);
+        }
+
+        public TResult F2<T1, T2, TResult>(T1 v1, T2 v2)
+        {
+            return (TResult)_hotfixFunc.Invoke(_target, v1, v2);
         }
     }
 }
