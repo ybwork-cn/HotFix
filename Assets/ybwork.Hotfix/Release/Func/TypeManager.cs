@@ -31,7 +31,7 @@ namespace Hotfix
             if (_types.TryGetValue(name, out Type type))
                 return type;
 
-            if (name.Contains('<') && !name.Contains("/<") && !name.Contains("<>"))
+            if (name.Contains('<') && !name.Contains("+<") && !name.Contains("<>"))
                 return GetGenericType(name);
 
             StackTrace stackTrace = new();
@@ -56,7 +56,7 @@ namespace Hotfix
 
         public static Type[] GetGenericParamTypes(string name)
         {
-            if (!name.Contains("<"))
+            if (!name.EndsWith(">"))
                 return Array.Empty<Type>();
 
             while (!name.StartsWith("<"))
@@ -111,6 +111,24 @@ namespace Hotfix
             type = type.MakeGenericType(paramTypes);
             _types[name] = type ?? throw new Exception(name);
             return type;
+        }
+
+        public static string GetFunctionName(string methodName)
+        {
+            if (!methodName.EndsWith(">"))
+                return methodName;
+
+            int count = 0;
+            for (int i = 0; i < methodName.Length; i++)
+            {
+                if (methodName[i] == '>')
+                    count++;
+                else if (methodName[i] == '<')
+                    count--;
+                if (count == 0)
+                    return methodName[..i];
+            }
+            throw new Exception("格式错误" + methodName);
         }
     }
 }

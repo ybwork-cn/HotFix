@@ -19,7 +19,7 @@ namespace Hotfix
 
         internal readonly MethodType Type;
         internal readonly HotfixMethodInfo HotfixMethodInfo;
-        internal readonly MethodInfo MethodInfo;
+        internal readonly MethodBase MethodBase;
 
         internal readonly Type[] Parameters;
         internal int ParametersCount => Parameters.Length;
@@ -35,20 +35,20 @@ namespace Hotfix
             ReturnType = TypeManager.GetType(methodInfo.ReturnType);
         }
 
-        internal HotfixFunc(MethodInfo methodInfo)
+        internal HotfixFunc(MethodBase methodBase, Type returnType)
         {
             Type = MethodType.Base;
-            MethodInfo = methodInfo;
-            Parameters = methodInfo.GetParameters().Select(p => p.ParameterType).ToArray();
-            IsStatic = methodInfo.IsStatic;
-            ReturnType = methodInfo.ReturnType;
+            MethodBase = methodBase;
+            Parameters = methodBase.GetParameters().Select(p => p.ParameterType).ToArray();
+            IsStatic = methodBase.IsStatic;
+            ReturnType = returnType;
         }
 
         public object Invoke(object obj, params object[] paras)
         {
             if (Type == MethodType.Base)
             {
-                return MethodInfo.Invoke(obj, paras);
+                return MethodBase.Invoke(obj, paras);
             }
             else
             {
@@ -64,7 +64,7 @@ namespace Hotfix
         {
             if (Type == MethodType.Base)
             {
-                MethodInfo.Invoke(obj, paras);
+                MethodBase.Invoke(obj, paras);
             }
             else
             {
@@ -556,7 +556,8 @@ namespace Hotfix
             Type delegateType = GetDelegateType();
             return Type switch
             {
-                MethodType.Base => MethodInfo.CreateDelegate(delegateType, target),
+                MethodType.Base when MethodBase is MethodInfo methodInfo => methodInfo.CreateDelegate(delegateType, target),
+                MethodType.Base => throw new NotImplementedException(),
                 MethodType.Hotfix => CreateHotFixDelegate(target),
                 _ => throw new NotImplementedException(),
             };
@@ -569,17 +570,15 @@ namespace Hotfix
             {
                 DelegateDefines delegateDefines = new DelegateDefines(this, target);
                 MethodInfo method = typeof(DelegateDefines).GetMethod($"A{ParametersCount}");
-                if (method == null)
-                    throw new Exception($"找不到：DelegateDefines.A{ParametersCount}");
+                AssertNotNull(method, $"找不到：DelegateDefines.A{ParametersCount}");
                 method = method.MakeGenericMethod(Parameters);
                 return Delegate.CreateDelegate(delegateType, delegateDefines, method);
             }
             else
             {
                 DelegateDefines delegateDefines = new DelegateDefines(this, target);
-                MethodInfo method = typeof(DelegateDefines).GetMethod($"F{Parameters.Length}");
-                if (method == null)
-                    throw new Exception($"找不到：DelegateDefines.F{Parameters.Length}");
+                MethodInfo method = typeof(DelegateDefines).GetMethod($"F{ParametersCount}");
+                AssertNotNull(method, $"找不到：DelegateDefines.F{ParametersCount}");
                 method = method.MakeGenericMethod(delegateType.GetGenericArguments());
                 return Delegate.CreateDelegate(delegateType, delegateDefines, method);
             }
@@ -642,6 +641,12 @@ namespace Hotfix
                 delegateType = delegateType.MakeGenericType(paramTypes);
             }
             return delegateType;
+        }
+
+        private static void AssertNotNull(object obj, string message)
+        {
+            if (obj == null)
+                throw new ArgumentNullException(message);
         }
     }
 

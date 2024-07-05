@@ -19,7 +19,7 @@ public class Test
 {
     public void Add(IEnumerable<int> arr)
     {
-        int result = arr.Sum();
+        int result = arr.Sum() + GetRange(3, 5).Sum();
         int v = result / 3;
         switch (v)
         {
@@ -31,6 +31,14 @@ public class Test
                 break;
         }
         Delay(100).Then(v => Debug.Log(v));
+    }
+
+    public IEnumerable<int> GetRange(int min, int max)
+    {
+        for (int i = min; i < max; i++)
+        {
+            yield return i;
+        }
     }
 
     public async YueTask<int> Delay(int ms)

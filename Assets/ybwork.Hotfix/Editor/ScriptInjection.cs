@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using Debug = UnityEngine.Debug;
 
 namespace Hotfix.Editor
 {
@@ -95,7 +94,6 @@ namespace Hotfix.Editor
 
             /// 遍历程序所有方法，进行代码注入
             /// 对所有方法，嵌入一段代码，检查该方法是否为热更新代码，如果是热更新代码，执行热更新逻辑
-            /// 对标记了<see cref="HotfixAttribute"/>的方法，将其IL序列化
             foreach (TypeDefinition typeDef in assembiy.MainModule.Types)
             {
                 foreach (MethodDefinition methedDef in typeDef.Methods)

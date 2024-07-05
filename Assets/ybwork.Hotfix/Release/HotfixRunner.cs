@@ -8,6 +8,7 @@ using System.Reflection;
 using System.Text.RegularExpressions;
 using UnityEngine;
 using UnityEngine.Networking;
+using Debug = UnityEngine.Debug;
 
 namespace Hotfix
 {
@@ -40,6 +41,10 @@ namespace Hotfix
             }
             else
             {
+                const BindingFlags bindingFlags =
+                    BindingFlags.Public | BindingFlags.NonPublic |
+                    BindingFlags.Instance | BindingFlags.Static;
+
                 Regex regex = new Regex("^(\\S*)::(\\S*)\\((\\S*)\\)$");
                 Match match = regex.Match(methodFullName);
 
@@ -47,8 +52,15 @@ namespace Hotfix
                 string methodName = match.Groups[2].Value;
                 string paraTypeNameString = match.Groups[3].Value;
 
-                Type type = TypeManager.GetType(typeName);
+                Type[] methodGenericTypeArguments = TypeManager.GetGenericParamTypes(methodName);
+                for (int i = 0; i < methodGenericTypeArguments.Length; i++)
+                {
+                    string oldName = $"!!{i}";
+                    string newValue = methodGenericTypeArguments[i].FullName;
+                    paraTypeNameString = paraTypeNameString.Replace(oldName, newValue);
+                }
 
+                Type type = TypeManager.GetType(typeName);
                 for (int i = 0; i < type.GenericTypeArguments.Length; i++)
                 {
                     string oldName = $"!{i}";
@@ -56,36 +68,31 @@ namespace Hotfix
                     paraTypeNameString = paraTypeNameString.Replace(oldName, newValue);
                 }
 
-                if (methodName.Contains("<"))
+                if (methodGenericTypeArguments.Length > 0)
                 {
-                    Type[] genericTypeTypes = TypeManager.GetGenericParamTypes(methodName);
+                    methodName = TypeManager.GetFunctionName(methodName);
 
-                    for (int i = 0; i < genericTypeTypes.Length; i++)
-                    {
-                        string oldName = $"!!{i}";
-                        string newValue = genericTypeTypes[i].FullName;
-                        paraTypeNameString = paraTypeNameString.Replace(oldName, newValue);
-                    }
-                    Type[] paraTypes = TypeManager.GetGenericParamTypes($"<{paraTypeNameString}>");
-
-                    methodName = methodName[..methodName.IndexOf("<")];
-
-                    const BindingFlags bindingFlags =
-                        BindingFlags.Public | BindingFlags.NonPublic |
-                        BindingFlags.Instance | BindingFlags.Static;
                     MethodInfo method = type.GetMethods(bindingFlags)
                         .Where(func => func.Name == methodName)
                         .Where(func => func.IsGenericMethod)
-                        .Where(Func => Func.GetGenericArguments().Length == genericTypeTypes.Length)
+                        .Where(Func => Func.GetGenericArguments().Length == methodGenericTypeArguments.Length)
                         .First()
-                        .MakeGenericMethod(genericTypeTypes);
-                    return new HotfixFunc(method);
+                        .MakeGenericMethod(methodGenericTypeArguments);
+                    return new HotfixFunc(method, method.ReturnType);
                 }
                 else
                 {
                     Type[] paraTypes = TypeManager.GetGenericParamTypes($"<{paraTypeNameString}>");
-                    MethodInfo method = type.GetMethod(methodName, paraTypes);
-                    return new HotfixFunc(method);
+                    if (methodName == ".ctor")
+                    {
+                        ConstructorInfo method = type.GetConstructor(paraTypes);
+                        return new HotfixFunc(method, typeof(void));
+                    }
+                    else
+                    {
+                        MethodInfo method = type.GetMethod(methodName, bindingFlags, null, paraTypes, null);
+                        return new HotfixFunc(method, method.ReturnType);
+                    }
                 }
             }
         }
