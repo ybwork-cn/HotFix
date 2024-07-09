@@ -119,7 +119,7 @@ namespace Hotfix
                 return methodName;
 
             int count = 0;
-            for (int i = 0; i < methodName.Length; i++)
+            for (int i = methodName.Length - 1; i >= 0; i--)
             {
                 if (methodName[i] == '>')
                     count++;
