@@ -213,6 +213,12 @@ namespace Hotfix
                         stack.Push((int)value);
                         return instruction.NextOffset;
                     }
+                case HotfixOpCode.Ldc_I4:
+                    {
+                        int value = Convert.ToInt32(instruction.Operand);
+                        stack.Push(value);
+                        return instruction.NextOffset;
+                    }
                 case HotfixOpCode.Dup:
                     {
                         object result = stack.Peek();
