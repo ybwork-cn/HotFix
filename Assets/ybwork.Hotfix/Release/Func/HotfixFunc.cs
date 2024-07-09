@@ -53,8 +53,10 @@ namespace Hotfix
             else
             {
                 Debug.Log("执行热更逻辑:" + HotfixMethodInfo.Name);
-                List<object> values = new List<object>(paras.Length + 1);
-                values.Add(obj);
+                int parasCount = IsStatic ? paras.Length : paras.Length + 1;
+                List<object> values = new List<object>(parasCount);
+                if (!IsStatic)
+                    values.Add(obj);
                 values.AddRange(paras);
                 return InvokeInternel(values);
             }
@@ -69,8 +71,10 @@ namespace Hotfix
             else
             {
                 Debug.Log("执行热更逻辑:" + HotfixMethodInfo.Name);
-                List<object> values = new List<object>(paras.Length + 1);
-                values.Add(obj);
+                int parasCount = IsStatic ? paras.Length : paras.Length + 1;
+                List<object> values = new List<object>(parasCount);
+                if (!IsStatic)
+                    values.Add(obj);
                 values.AddRange(paras);
                 InvokeInternel(values);
             }
