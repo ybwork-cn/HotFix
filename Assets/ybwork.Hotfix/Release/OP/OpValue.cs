@@ -5,6 +5,7 @@ namespace Hotfix
     public enum OpValueType
     {
         Int = 0,
+        Long,
         Sbyte,
         Float,
         Double,
@@ -18,6 +19,7 @@ namespace Hotfix
         public readonly OpValueType ValueType;
         public readonly sbyte SbyteValue;
         public readonly int IntValue;
+        public readonly long LongValue;
         public readonly float FloatValue;
         public readonly double DoubleValue;
         public readonly bool BoolValue;
@@ -29,6 +31,7 @@ namespace Hotfix
         public readonly object RealValue => ValueType switch
         {
             OpValueType.Int => IntValue,
+            OpValueType.Long => LongValue,
             OpValueType.Sbyte => SbyteValue,
             OpValueType.Float => FloatValue,
             OpValueType.Double => DoubleValue,
@@ -49,6 +52,11 @@ namespace Hotfix
             {
                 ValueType = OpValueType.Int;
                 IntValue = intValue;
+            }
+            else if (value is long longValue)
+            {
+                ValueType = OpValueType.Long;
+                LongValue = longValue;
             }
             else if (value is sbyte sbyteValue)
             {
@@ -80,6 +88,11 @@ namespace Hotfix
                 ValueType = OpValueType.Object;
             }
             ObjectValue = value;
+        }
+
+        public override string ToString()
+        {
+            return $"[{ObjectType}]{RealValue}";
         }
     }
 }
