@@ -46,11 +46,17 @@
 - 优化热更泛型方法解析逻辑
 - 支持迭代器方法
 
+#### 2024.07.11
+- 增加设置，允许手动选择待热更的程序集
+
 #### 注
+- 设置项中所有的程序集全部热更
 - 函数内匿名方法如果热更，那么所在外层方法也要热更
 - 位运算应支持所有整数类型，参考https://learn.microsoft.com/zh-cn/dotnet/api/system.reflection.emit.opcodes.shr?view=net-8.0&viewFallbackFrom=net-4.8
 - 增加对更多IL指令的支持
-- 支持现有类型的热更
+- 支持类型的热更
+  - 支持新类型的创建
+  - 支持现有类型的修改
   - 允许增加字段
   - 允许增、改属性
   - 类型成员的热更方式
@@ -60,4 +66,7 @@
     - 属性:每个类型增加一个字段`public Dictionary<string,HotfixProperty> __HotfixProperties__;`，用于存储所有的字段
       - `HotfixProperty`需要存储该属性的已被修改的访问符，以及该访问符所绑定的方法
 - class和struct实现方式不同
-- 主程序集`Hotfix.dll`引用的其他程序集也参与热更
+  - 引用类型变量在热更逻辑中赋值直接赋值引用
+  - 值类型变量在热更逻辑中赋值要新建变量并拷贝逻辑
+    - 函数内临时变量的定义要使用stackalloc
+    - 将变量赋值给引用类型变量时要装箱拆箱
