@@ -12,5 +12,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1b41d4f82e40fc74b9ed756c3b5a3c18, type: 3}
   m_Name: HotfixSettings
   m_EditorClassIdentifier: 
-  HotfixAssemblies:
+  _hotfixAssemblies:
+  - {fileID: 5897886265953266890, guid: d47fcdeb78c6f7b4c8456b3f9ce66fc7, type: 3}
   - {fileID: 5897886265953266890, guid: b6269602ac945c942b45a579908cb12c, type: 3}

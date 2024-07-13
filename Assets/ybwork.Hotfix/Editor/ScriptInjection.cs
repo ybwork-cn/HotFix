@@ -16,65 +16,52 @@ namespace Hotfix.Editor
             using MemoryStream ms1 = LoadAssemblyFile(dllName);
             using MemoryStream ms2 = LoadAssemblyFile(oldDllName);
             AssemblyDefinition assembly = AssemblyDefinition.ReadAssembly(ms1);
-            AssemblyDefinition oldAssembly = AssemblyDefinition.ReadAssembly(ms2);
+            AssemblyDefinition oldAssembly = ms2 == null ? null : AssemblyDefinition.ReadAssembly(ms2);
 
             Dictionary<string, MethodDefinition> methods = new Dictionary<string, MethodDefinition>();
 
             /// 遍历程序所有方法，进行IL序列化
             foreach (TypeDefinition typeDef in assembly.MainModule.GetTypes())
             {
-                TypeDefinition oldTypeRef = oldAssembly.MainModule.Types
+                if (typeDef.FullName == "UnitySourceGeneratedAssemblyMonoScriptTypes_v1")
+                    continue;
+
+                TypeDefinition oldTypeRef = oldAssembly?.MainModule.GetTypes()
                     .FirstOrDefault(type => type.FullName == typeDef.FullName);
                 if (oldTypeRef == null)
                 {
-                    oldTypeRef = oldAssembly.MainModule.GetTypes()
-                        .FirstOrDefault(type => type.FullName == typeDef.FullName);
-                    if (oldTypeRef == null)
+                    foreach (MethodDefinition methedDef in typeDef.Methods)
                     {
-                        foreach (MethodDefinition methedDef in typeDef.Methods)
-                        {
-                            methods[methedDef.FullName] = methedDef;
-                        }
-                    }
-                    else
-                    {
-                        bool changed = false;
-                        foreach (MethodDefinition methedDef in typeDef.Methods)
-                        {
-                            MethodDefinition oldMethedDef = oldTypeRef.Methods
-                                .FirstOrDefault(method => method.FullName == methedDef.FullName);
-                            if (!Equals(methedDef, oldMethedDef))
-                            {
-                                changed = true;
-                            }
-                        }
-                        if (changed)
-                        {
-                            foreach (MethodDefinition methedDef in typeDef.Methods)
-                            {
-                                //Regex regex = new Regex("^(\\S+)/<(\\S+)>");
-                                //Match match = regex.Match(methedDef.DeclaringType.FullName);
-                                //Debug.Log(regex);
-                                //Debug.Log(methedDef.DeclaringType.FullName);
-                                //Debug.Log(match);
-                                methods[methedDef.FullName] = methedDef;
-                            }
-                        }
+                        methods[methedDef.FullName] = methedDef;
                     }
                 }
                 else
                 {
+                    bool changed = false;
                     foreach (MethodDefinition methedDef in typeDef.Methods)
                     {
                         MethodDefinition oldMethedDef = oldTypeRef.Methods
                             .FirstOrDefault(method => method.FullName == methedDef.FullName);
                         if (!Equals(methedDef, oldMethedDef))
                         {
+                            changed = true;
+                        }
+                    }
+                    if (changed)
+                    {
+                        foreach (MethodDefinition methedDef in typeDef.Methods)
+                        {
+                            //Regex regex = new Regex("^(\\S+)/<(\\S+)>");
+                            //Match match = regex.Match(methedDef.DeclaringType.FullName);
+                            //Debug.Log(regex);
+                            //Debug.Log(methedDef.DeclaringType.FullName);
+                            //Debug.Log(match);
                             methods[methedDef.FullName] = methedDef;
                         }
                     }
                 }
             }
+
             return methods.Values
                 .OrderBy(method => method.DeclaringType.FullName + "::" + method.Name)
                 .Select(method => Convert(method))
@@ -108,6 +95,8 @@ namespace Hotfix.Editor
 
         private static MemoryStream LoadAssemblyFile(string dllName)
         {
+            if (!File.Exists(dllName))
+                return null;
             using FileStream fsSourse = new(dllName, FileMode.Open);
             MemoryStream ms = new MemoryStream();
             fsSourse.CopyTo(ms);

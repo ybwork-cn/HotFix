@@ -11,7 +11,9 @@ namespace Hotfix.Editor
 {
     internal static class DLLBuilder
     {
-        private const string DLL_NAME = "Library/ScriptAssemblies/Hotfix.dll";
+        private const string DLL_PATH = "Library/ScriptAssemblies";
+        private const string OLD_DLL_PATH = "HotfixDlls/Latest";
+
 
         [MenuItem("Tools/Switch to Release Mode", priority = 0)]
         public static void SwitchToReleaseMode()
@@ -55,19 +57,25 @@ namespace Hotfix.Editor
                 Directory.Delete(HotfixRunner.RootPath, true);
             Directory.CreateDirectory(HotfixRunner.RootPath);
 
-            string oldDllName = $"HotfixDlls/Latest/Hotfix.dll";
-
             Dictionary<string, string> methodNames = new Dictionary<string, string>();
-            IEnumerable<HotfixMethodInfo> methods = ScriptInjection.GenerateHotfixIL(DLL_NAME, oldDllName);
-            foreach (HotfixMethodInfo method in methods)
+
+            foreach (var dllName in HotfixSettings.GetAllDllNames())
             {
-                string content = JsonConvert.SerializeObject(method, Formatting.Indented);
-                string name = method.Name;
-                string hash = Hash128.Compute(name).ToString();
-                methodNames.Add(name, hash);
-                string path = Path.Combine(HotfixRunner.RootPath, hash + ".json");
-                File.WriteAllText(path, content);
+                string newDllName = $"{DLL_PATH}/{dllName}.dll";
+                string oldDllName = $"{OLD_DLL_PATH}/{dllName}.dll";
+                HotfixMethodInfo[] methods = ScriptInjection.GenerateHotfixIL(newDllName, oldDllName);
+                foreach (HotfixMethodInfo method in methods)
+                {
+                    string content = JsonConvert.SerializeObject(method, Formatting.Indented);
+                    string name = method.Name;
+                    string hash = Hash128.Compute(name).ToString();
+                    methodNames.Add(name, hash);
+                    string path = Path.Combine(HotfixRunner.RootPath, hash + ".json");
+                    File.WriteAllText(path, content);
+                }
+                Debug.Log(dllName);
             }
+
             string catalogueContent = JsonConvert.SerializeObject(methodNames, Formatting.Indented);
             File.WriteAllText(Path.Combine(HotfixRunner.RootPath, "catalogue.json"), catalogueContent);
 
@@ -78,7 +86,10 @@ namespace Hotfix.Editor
         [MenuItem("Tools/IL Injection", priority = 3)]
         public static void ILInjection()
         {
-            ScriptInjection.ILInjection(DLL_NAME);
+            foreach (var dllName in HotfixSettings.GetAllDllNames())
+            {
+                ScriptInjection.ILInjection($"{DLL_PATH}/{dllName}.dll");
+            }
             Debug.Log("IL Injection Succeed");
         }
     }

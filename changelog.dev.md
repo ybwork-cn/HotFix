@@ -49,8 +49,10 @@
 #### 2024.07.11
 - 增加设置，允许手动选择待热更的程序集
 
-#### 注
+#### 2024.07.13
 - 设置项中所有的程序集全部热更
+
+#### 注
 - 函数内匿名方法如果热更，那么所在外层方法也要热更
 - 位运算应支持所有整数类型，参考https://learn.microsoft.com/zh-cn/dotnet/api/system.reflection.emit.opcodes.shr?view=net-8.0&viewFallbackFrom=net-4.8
 - 增加对更多IL指令的支持
